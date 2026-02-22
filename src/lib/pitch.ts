@@ -64,34 +64,38 @@ export function getPitchData(frequency: number): PitchData | null {
 export function detectPitchHPS(frequencyData: Float32Array, sampleRate: number, fftSize: number): number | null {
     const NUM_HARMONICS = 5; // Downsampling factor (x1 to x5)
 
-    // 1. Convert Decibels to Linear Magnitude
-    // The Web Audio API getFloatFrequencyData returns values in dB (-100 to 0).
     const magnitudes = new Float32Array(frequencyData.length);
     let maxMag = 0;
 
+    // WebAudio getFloatFrequencyData returns dBFS (typically -100 to 0).
+    // We need to shift it up so the noise floor is near 0, and peaks are positive.
+    const MIN_DB = -90; // Ignore anything below -90dB
+
     for (let i = 0; i < frequencyData.length; i++) {
-        // Simple linear mapping: push silent(-100dB) to 0, loud(0) to 1.
-        let linear = Math.pow(10, frequencyData[i] / 20);
-        magnitudes[i] = linear;
-        if (linear > maxMag) maxMag = linear;
+        const db = frequencyData[i];
+        let mag = 0;
+        if (db > MIN_DB) {
+            mag = db - MIN_DB; // Shift up: e.g. -40dB becomes 50. 
+        }
+        magnitudes[i] = mag;
+        if (mag > maxMag) maxMag = mag;
     }
 
-    // Noise gate
-    if (maxMag < 0.01) return null;
+    // Noise gate: If the absolute loudest frequency is still very quiet, return null
+    if (maxMag < 10) return null; // e.g., if louder than -80dB
 
-    // The resolution (Hz per array bin). e.g., 44100 / 2048 = ~21.5 Hz per bin
-    // To get better resolution, fftSize needs to be large (e.g. 4096 or 8192)
+    // The resolution (Hz per array bin)
     const binSize = (sampleRate / 2) / frequencyData.length;
 
-    // 2. Compute Harmonic Product Spectrum
+    // Compute Harmonic Product Spectrum
     const hps = new Float32Array(frequencyData.length);
     for (let i = 0; i < hps.length; i++) {
-        let product = magnitudes[i]; // Start with fundamental bin
+        let product = magnitudes[i];
 
+        // Multiply by harmonics
         for (let h = 2; h <= NUM_HARMONICS; h++) {
             const harmonicIndex = i * h;
             if (harmonicIndex < magnitudes.length) {
-                // Multiply by the amplitude at harmonic multiples
                 product *= magnitudes[harmonicIndex];
             } else {
                 product *= 0;
@@ -100,13 +104,12 @@ export function detectPitchHPS(frequencyData: Float32Array, sampleRate: number, 
         hps[i] = product;
     }
 
-    // 3. Find the peak in the HPS array
+    // Find the peak in the HPS array within human vocal range
     let maxHps = 0;
     let maxHpsIndex = -1;
 
-    // Vocal pitch range restriction: 70Hz (Bass) to 1200Hz (Hi Soprano)
-    const minBin = Math.floor(70 / binSize);
-    const maxBin = Math.floor(1200 / binSize);
+    const minBin = Math.floor(70 / binSize); // Bass ~70Hz
+    const maxBin = Math.floor(1200 / binSize); // Soprano ~1200Hz
 
     for (let i = minBin; i <= maxBin; i++) {
         if (hps[i] > maxHps) {
@@ -115,8 +118,8 @@ export function detectPitchHPS(frequencyData: Float32Array, sampleRate: number, 
         }
     }
 
-    if (maxHpsIndex === -1 || maxHps < 1e-10) return null;
+    // Since we multiplied magnitudes, the maxHps can be extremely large or 0
+    if (maxHpsIndex === -1 || maxHps === 0) return null;
 
-    // The fundamental frequency is the bin index multiplied by the resolution
     return maxHpsIndex * binSize;
 }
