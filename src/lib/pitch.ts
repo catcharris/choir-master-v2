@@ -96,9 +96,9 @@ export function detectPitchHPS(frequencyData: Float32Array, sampleRate: number, 
         for (let h = 2; h <= NUM_HARMONICS; h++) {
             const harmonicIndex = i * h;
             if (harmonicIndex < magnitudes.length) {
-                product *= magnitudes[harmonicIndex];
-            } else {
-                product *= 0;
+                // Critical Fix: If a distant overtone falls below the noise gate (mag = 0),
+                // multiplying by 0 destroys the entire reading. Default to 1 instead.
+                product *= Math.max(1, magnitudes[harmonicIndex]);
             }
         }
         hps[i] = product;
