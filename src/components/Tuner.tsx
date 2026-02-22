@@ -2,11 +2,12 @@
 "use client"
 import React, { useState, useEffect } from 'react';
 import { useAudioEngine } from '@/lib/useAudioEngine';
-import { Mic, MicOff, AlertCircle, ArrowDown, ArrowUp, CheckCircle, Activity } from 'lucide-react';
+import { Mic, MicOff, AlertCircle, ArrowDown, ArrowUp, CheckCircle, Activity, Info, X } from 'lucide-react';
 
 export default function Tuner() {
     const [a4, setA4] = useState(440);
     const [tolerance, setTolerance] = useState(20); // Default to Amateur (±20 cents)
+    const [showInfo, setShowInfo] = useState(false);
     const { listenMode, startListening, stopListening, clearPitch, pitch, error } = useAudioEngine(a4);
 
     const isListening = listenMode === 'vocal';
@@ -41,16 +42,25 @@ export default function Tuner() {
     const status = getStatus();
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] p-4 bg-slate-900 rounded-3xl shadow-2xl border border-slate-800">
+        <div className="relative flex flex-col items-center justify-center min-h-[60vh] p-4 bg-slate-900 rounded-3xl shadow-2xl border border-slate-800">
+            {/* Info Button */}
+            <button
+                onClick={() => setShowInfo(true)}
+                className="absolute top-6 right-6 text-slate-500 hover:text-indigo-400 transition-colors"
+                title="튜너 작동 원리 안내"
+            >
+                <Info size={24} />
+            </button>
+
             {error && (
-                <div className="bg-red-900/50 text-red-200 p-3 rounded-lg mb-6 flex items-center gap-2 border border-red-800">
+                <div className="bg-red-900/50 text-red-200 p-3 rounded-lg mt-8 mb-4 flex items-center gap-2 border border-red-800">
                     <AlertCircle size={18} />
                     <p className="text-sm">{error}</p>
                 </div>
             )}
 
             {/* Instant Note Display */}
-            <div className={`relative flex flex-col items-center justify-center w-72 h-72 mb-10 rounded-full border-4 transition-all duration-150 ${listenMode === 'idle' ? 'border-slate-800 bg-slate-800/50' :
+            <div className={`relative flex flex-col items-center justify-center w-72 h-72 ${error ? 'mb-6' : 'mt-8 mb-10'} rounded-full border-4 transition-all duration-150 ${listenMode === 'idle' ? 'border-slate-800 bg-slate-800/50' :
                 isAutoTuning ? 'border-amber-500/50 bg-amber-500/10 shadow-[0_0_50px_rgba(245,158,11,0.2)]' :
                     !pitch ? 'border-indigo-500/30 bg-indigo-500/10' :
                         status === 'STABLE' ? 'border-green-500 bg-green-500/10 shadow-[0_0_50px_rgba(34,197,94,0.3)]' :
@@ -134,7 +144,7 @@ export default function Tuner() {
                 )}
             </button>
             <p className="text-slate-500 text-sm mt-4 text-center max-w-xs mb-6">
-                {isListening ? "단원의 정확한 음정(음 이탈)을 즉시 확인합니다." : "합창 단원 정밀 피치 트래커"}
+                {isListening ? "단원의 정확한 음정(음 이탈)을 즉시 확인합니다." : "보컬/합창 전용 정밀 피치 트래커"}
             </p>
 
             {/* Application Settings Section */}
@@ -227,6 +237,65 @@ export default function Tuner() {
                     </button>
                 </div>
             </div>
+
+            {/* Info Modal Overlay */}
+            {showInfo && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+                    <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-md w-full max-h-[85vh] overflow-y-auto shadow-2xl">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                                <Info className="text-indigo-400" size={20} />
+                                보컬 전용 튜너 작동 원리
+                            </h2>
+                            <button
+                                onClick={() => setShowInfo(false)}
+                                className="p-2 bg-slate-800 text-slate-400 hover:text-white rounded-full transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-6 text-sm text-slate-300">
+                            <section>
+                                <h3 className="font-bold text-indigo-300 text-base mb-2 flex items-center gap-2">
+                                    <span className="bg-indigo-500/20 text-indigo-400 w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span>
+                                    30cm 소음 방어막 (RMS Gate)
+                                </h3>
+                                <p className="leading-relaxed border-l-2 border-slate-700 pl-3">
+                                    일반 튜너는 옆 사람의 소리까지 섞여서 고장납니다. 이 튜너는 물리적인 소리 에너지(RMS)를 계산하여 <strong>"스마트폰 20~30cm 앞의 목소리"</strong>만 수음하고, 거리가 조금이라도 먼 주변 단원들의 소리는 연산 전에 수학적으로 완전히 차단합니다.
+                                </p>
+                            </section>
+
+                            <section>
+                                <h3 className="font-bold text-indigo-300 text-base mb-2 flex items-center gap-2">
+                                    <span className="bg-indigo-500/20 text-indigo-400 w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span>
+                                    바이브레이션 완충기 (Vibrato Absorber)
+                                </h3>
+                                <p className="leading-relaxed border-l-2 border-slate-700 pl-3">
+                                    기계는 1초에 60번씩 미세한 떨림을 감지합니다. 이 튜너는 성대의 자연스러운 바이브레이션(떨림) 주기를 400ms 완충 버퍼로 흡수하여 <strong>"가창자의 진짜 중심 음정"</strong>만 묵직하고 안정적으로 화면에 표시합니다.
+                                </p>
+                            </section>
+
+                            <section>
+                                <h3 className="font-bold text-indigo-300 text-base mb-2 flex items-center gap-2">
+                                    <span className="bg-indigo-500/20 text-indigo-400 w-6 h-6 rounded-full flex items-center justify-center text-xs">3</span>
+                                    합창단 맞춤형 허용 오차 (Tolerance)
+                                </h3>
+                                <p className="leading-relaxed border-l-2 border-slate-700 pl-3">
+                                    프로용 악기 튜너는 ±5 Cents를 벗어나면 에러를 띄우지만, 실제 합창단에서 사람 귀에 아름답게 화음이 섞이는(블렌딩) 범위는 <strong>±15 ~ ±20 Cents</strong> 입니다. 로봇 같은 튜너의 경고창에 겁내지 않고 본인의 실력에 맞는 난이도를 선택해 연습할 수 있습니다.
+                                </p>
+                            </section>
+                        </div>
+
+                        <button
+                            onClick={() => setShowInfo(false)}
+                            className="w-full mt-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-colors"
+                        >
+                            확인
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
