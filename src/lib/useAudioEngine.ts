@@ -104,16 +104,28 @@ export function useAudioEngine(a4: number = 440) {
         const frequency = autoCorrelate(buffer, audioContextRef.current.sampleRate, modeRef.current as 'vocal' | 'piano');
 
         if (frequency) {
-            // Add to moving average buffer (runs at 60fps)
+            // 1. Instant Note-Change Detection (Prevent Sluggish 'Portamento' UI Sliding)
+            if (recentFrequenciesRef.current.length > 0) {
+                const lastFreq = recentFrequenciesRef.current[recentFrequenciesRef.current.length - 1];
+                const pitchJumpRatio = frequency / lastFreq;
+                // If the frequency jumps by more than ~1.5 semitones (> 9%), it's a new note, not vibrato.
+                if (pitchJumpRatio > 1.09 || pitchJumpRatio < 0.91) {
+                    recentFrequenciesRef.current = []; // Flush buffer to snap instantly
+                }
+            }
+
+            // 2. Vibrato Absorption Buffer (runs at 60fps)
+            // A 25-frame buffer covers ~416ms, encompassing slightly more than one full 5-6Hz vocal vibrato cycle.
+            // This averages out the cyclical peaks and valleys to find the singer's true 'center' pitch.
             recentFrequenciesRef.current.push(frequency);
-            if (recentFrequenciesRef.current.length > 5) {
+            if (recentFrequenciesRef.current.length > 25) {
                 recentFrequenciesRef.current.shift();
             }
 
             const now = Date.now();
-            // Throttle UI updates to ~10 FPS for human readability (100ms)
+            // 3. UI Throttle (10 FPS)
             if (now - lastUpdateTimeRef.current > 100) {
-                // Calculate moving average
+                // Calculate the true center pitch (Moving Average)
                 const sum = recentFrequenciesRef.current.reduce((a, b) => a + b, 0);
                 const avgFreq = sum / recentFrequenciesRef.current.length;
 
