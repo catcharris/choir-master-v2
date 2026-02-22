@@ -68,6 +68,8 @@ export function useAudioEngine() {
         setPitch(null);
     }, []);
 
+    const recentFrequenciesRef = useRef<number[]>([]);
+
     const updatePitch = useCallback(() => {
         if (!analyserRef.current || !audioContextRef.current) return;
 
@@ -77,8 +79,21 @@ export function useAudioEngine() {
         const frequency = autoCorrelate(buffer, audioContextRef.current.sampleRate);
 
         if (frequency && frequency > 50 && frequency < 2000) { // Human vocal range broadly 50Hz - 2kHz
-            const pitchData = getPitchData(frequency);
+            // Add to moving average buffer
+            recentFrequenciesRef.current.push(frequency);
+            if (recentFrequenciesRef.current.length > 10) {
+                recentFrequenciesRef.current.shift(); // Keep last 10 frames (~160ms)
+            }
+
+            // Calculate moving average
+            const sum = recentFrequenciesRef.current.reduce((a, b) => a + b, 0);
+            const avgFreq = sum / recentFrequenciesRef.current.length;
+
+            const pitchData = getPitchData(avgFreq);
             setPitch(pitchData);
+        } else {
+            // If no valid frequency is found, clear the smoothing buffer so the next note doesn't slide
+            recentFrequenciesRef.current = [];
         }
 
         // Loop using requestAnimationFrame for smooth 60fps tracking

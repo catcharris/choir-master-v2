@@ -52,55 +52,47 @@ export function getPitchData(frequency: number): PitchData | null {
  * @returns The detected fundamental frequency in Hz, or null if no clear pitch is found.
  */
 export function autoCorrelate(buffer: Float32Array, sampleRate: number): number | null {
-    // 1. Check if the signal is loud enough
+    const SIZE = buffer.length;
     let rms = 0;
-    for (let i = 0; i < buffer.length; i++) {
-        rms += buffer[i] * buffer[i];
+
+    // 1. Calculate Volume (RMS)
+    for (let i = 0; i < SIZE; i++) {
+        const val = buffer[i];
+        rms += val * val;
     }
-    rms = Math.sqrt(rms / buffer.length);
-    if (rms < 0.01) {
-        // Signal is too quiet
+    rms = Math.sqrt(rms / SIZE);
+
+    // Lower threshold to pick up voices from further away (was 0.01)
+    if (rms < 0.005) {
         return null;
     }
 
-    // 2. Find the clear signal range to avoid edge artifacts
-    let r1 = 0;
-    let r2 = buffer.length - 1;
-    const threshold = 0.2;
-
-    for (let i = 0; i < buffer.length / 2; i++) {
-        if (Math.abs(buffer[i]) < threshold) {
-            r1 = i;
-            break;
-        }
+    // 2. Auto-correlation calculation
+    let r1 = 0, r2 = SIZE - 1, thres = 0.2;
+    for (let i = 0; i < SIZE / 2; i++) {
+        if (Math.abs(buffer[i]) < thres) { r1 = i; break; }
     }
-    for (let i = 1; i < buffer.length / 2; i++) {
-        if (Math.abs(buffer[buffer.length - i]) < threshold) {
-            r2 = buffer.length - i;
-            break;
-        }
+    for (let i = 1; i < SIZE / 2; i++) {
+        if (Math.abs(buffer[SIZE - i]) < thres) { r2 = SIZE - i; break; }
     }
+    const cleanBuffer = buffer.slice(r1, r2);
+    const C_SIZE = cleanBuffer.length;
 
-    buffer = buffer.slice(r1, r2);
-    const SIZE = buffer.length;
-
-    // 3. Auto-correlation calculation
-    const c = new Array(SIZE).fill(0);
-    for (let i = 0; i < SIZE; i++) {
-        for (let j = 0; j < SIZE - i; j++) {
-            c[i] = c[i] + buffer[j] * buffer[j + i];
+    const c = new Array(C_SIZE).fill(0);
+    for (let i = 0; i < C_SIZE; i++) {
+        for (let j = 0; j < C_SIZE - i; j++) {
+            c[i] = c[i] + cleanBuffer[j] * cleanBuffer[j + i];
         }
     }
 
-    // 4. Find the first significant peak
+    // 3. Find the first valley then the first peak to avoid false high-frequency (harmonics) matches
     let d = 0;
     while (c[d] > c[d + 1]) {
         d++;
     }
 
-    let maxval = -1;
-    let maxpos = -1;
-    for (let i = d; i < SIZE; i++) {
+    let maxval = -1, maxpos = -1;
+    for (let i = d; i < C_SIZE; i++) {
         if (c[i] > maxval) {
             maxval = c[i];
             maxpos = i;
@@ -109,13 +101,21 @@ export function autoCorrelate(buffer: Float32Array, sampleRate: number): number 
 
     let T0 = maxpos;
 
-    // 5. Parabolic interpolation for fine tuning the sub-sample peak
-    let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
-    let a = (x1 + x3 - 2 * x2) / 2;
-    let b = (x3 - x1) / 2;
+    // 4. Parabolic interpolation
+    const x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+    const a = (x1 + x3 - 2 * x2) / 2;
+    const b = (x3 - x1) / 2;
+
     if (a) {
         T0 = T0 - b / (2 * a);
     }
 
-    return sampleRate / T0;
+    const freq = sampleRate / T0;
+
+    // Reject wildly impossible human frequencies (soprano peak is ~1200, but whistle register higher)
+    if (freq < 50 || freq > 2000) {
+        return null;
+    }
+
+    return freq;
 }
