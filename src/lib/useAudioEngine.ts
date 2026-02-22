@@ -151,11 +151,65 @@ export function useAudioEngine(a4: number = 440, onPitchUpdate?: (pitch: PitchDa
         requestRef.current = requestAnimationFrame(updatePitch);
     }, []);
 
+    const [isRecording, setIsRecording] = useState(false);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+    const finalBlobRef = useRef<Blob | null>(null);
+
+    // --- Media Recorder Functions (Phase 3: Automated Practice Tracks) ---
+    const startRecording = useCallback(() => {
+        if (!streamRef.current) {
+            console.error("Cannot start recording: No active microphone stream.");
+            return;
+        }
+
+        try {
+            audioChunksRef.current = [];
+            finalBlobRef.current = null;
+
+            // Opus codec provides excellent vocal quality at very low bitrates (ideal for upload)
+            const options = { mimeType: 'audio/webm;codecs=opus' };
+            const recorder = new MediaRecorder(streamRef.current, options);
+
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) {
+                    audioChunksRef.current.push(e.data);
+                }
+            };
+
+            recorder.onstop = () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm;codecs=opus' });
+                finalBlobRef.current = audioBlob;
+                setIsRecording(false);
+                console.log("Recording stopped. Final Blob size:", audioBlob.size);
+            };
+
+            recorder.start(1000); // Record in 1-second chunks
+            mediaRecorderRef.current = recorder;
+            setIsRecording(true);
+        } catch (err) {
+            console.error("Failed to start MediaRecorder:", err);
+            setError("녹음을 시작할 수 없습니다. (Recording failed)");
+        }
+    }, []);
+
+    const stopRecording = useCallback(() => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+        }
+    }, []);
+
+    const getRecordedBlob = useCallback(() => {
+        return finalBlobRef.current;
+    }, []);
+    // ------------------------------------------------------------------
+
     useEffect(() => {
         return () => {
             stopListening();
+            stopRecording();
         };
-    }, [stopListening]);
+    }, [stopListening, stopRecording]);
 
     return {
         listenMode,
@@ -164,6 +218,12 @@ export function useAudioEngine(a4: number = 440, onPitchUpdate?: (pitch: PitchDa
         stopListening,
         clearPitch: () => setPitch(null),
         pitch,
-        error
+        error,
+
+        // Expose recording controls
+        isRecording,
+        startRecording,
+        stopRecording,
+        getRecordedBlob
     };
 }

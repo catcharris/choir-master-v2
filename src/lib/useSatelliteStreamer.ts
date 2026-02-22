@@ -3,9 +3,19 @@ import { supabase } from './supabaseClient';
 import { PitchData } from './pitch';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
-export function useSatelliteStreamer(roomId: string, partName: string) {
+export function useSatelliteStreamer(
+    roomId: string,
+    partName: string,
+    onCommandReceived?: (action: 'START_RECORD' | 'STOP_RECORD') => void
+) {
     const [status, setStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
     const channelRef = useRef<RealtimeChannel | null>(null);
+
+    // Keep callback fresh without triggering re-renders
+    const commandCallbackRef = useRef(onCommandReceived);
+    useEffect(() => {
+        commandCallbackRef.current = onCommandReceived;
+    }, [onCommandReceived]);
 
     const connect = useCallback(() => {
         if (!roomId || !partName) return;
@@ -22,6 +32,12 @@ export function useSatelliteStreamer(roomId: string, partName: string) {
         channel
             .on('broadcast', { event: 'ping' }, () => {
                 // Optional: handle ping from master
+            })
+            .on('broadcast', { event: 'master_command' }, ({ payload }) => {
+                if (commandCallbackRef.current && payload?.action) {
+                    console.log("Received Master Command:", payload.action);
+                    commandCallbackRef.current(payload.action);
+                }
             })
             .subscribe((status, err) => {
                 if (status === 'SUBSCRIBED') {

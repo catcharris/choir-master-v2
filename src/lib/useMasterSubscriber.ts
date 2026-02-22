@@ -101,10 +101,25 @@ export function useMasterSubscriber(roomId: string) {
         };
     }, [disconnect]);
 
+    // Command broadcast for Phase 3: Recording Sync
+    const broadcastCommand = useCallback((action: 'START_RECORD' | 'STOP_RECORD') => {
+        if (channelRef.current && status === 'connected') {
+            channelRef.current.send({
+                type: 'broadcast',
+                event: 'master_command',
+                payload: {
+                    action,
+                    timestamp: Date.now()
+                }
+            }).catch(err => console.error("Failed to broadcast command:", err));
+        }
+    }, [status]);
+
     return {
         status,
         satellites,
         connect,
         disconnect,
+        broadcastCommand
     };
 }

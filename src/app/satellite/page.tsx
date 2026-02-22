@@ -1,17 +1,67 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useAudioEngine } from '@/lib/useAudioEngine';
 import { useSatelliteStreamer } from '@/lib/useSatelliteStreamer';
-import { RadioReceiver, LogOut, CheckCircle, AlertCircle } from 'lucide-react';
+import { PitchData } from '@/lib/pitch';
+import { uploadAudioBlob } from '@/lib/uploadAudio';
+import { RadioReceiver, LogOut, CheckCircle, AlertCircle, Mic } from 'lucide-react';
 
 export default function SatellitePage() {
     const [roomId, setRoomId] = useState('');
     const [partName, setPartName] = useState('');
 
-    const { status: wsStatus, connect, disconnect, broadcastPitch } = useSatelliteStreamer(roomId, partName);
+    // --- Media Recorder setup for Phase 3 ---
+    // The trick here is that we define our command handler BEFORE we pass it into the streamer hook,
+    // but the streamer hook is what actually drives the AudioEngine via broadcastPitch.
+    // To solve this cleanly, we extract references to the AudioEngine functions.
+    const {
+        listenMode, startListening, stopListening, pitch, error,
+        isRecording, startRecording, stopRecording, getRecordedBlob
+    } = useAudioEngine(440, (p) => broadcastPitchRef.current(p));
 
-    // We pass our broadcast function directly into the Pitch Engine callback
-    const { listenMode, startListening, stopListening, pitch, error } = useAudioEngine(440, broadcastPitch);
+    // We use a ref to bypass react cyclic dependency issues when passing broadcastPitch downwards
+    const broadcastPitchRef = useRef<(p: PitchData | null) => void>(() => { });
+
+    const handleMasterCommand = useCallback((action: 'START_RECORD' | 'STOP_RECORD') => {
+        console.log("Satellite received command:", action);
+        if (action === 'START_RECORD') {
+            startRecording();
+        } else if (action === 'STOP_RECORD') {
+            stopRecording();
+
+            // The recorder takes a few milliseconds to finalize the Blob after stop() is called.
+            // We poll quickly for the blob to be ready, then upload.
+            let attempts = 0;
+            const checkBlobAndUpload = setInterval(async () => {
+                attempts++;
+                const blob = getRecordedBlob();
+                if (blob) {
+                    clearInterval(checkBlobAndUpload);
+                    console.log("Blob ready! Uploading to Supabase...");
+                    const path = await uploadAudioBlob(blob, roomId, partName);
+                    if (path) {
+                        console.log("Upload successful:", path);
+                        // Optional: show momentary UI success state here
+                    }
+                } else if (attempts > 50) { // Limit to ~2.5 seconds max wait
+                    clearInterval(checkBlobAndUpload);
+                    console.error("Timed out waiting for audio blob to finalize.");
+                }
+            }, 50);
+
+        }
+    }, [startRecording, stopRecording, getRecordedBlob, roomId, partName]);
+
+    const { status: wsStatus, connect, disconnect, broadcastPitch } = useSatelliteStreamer(
+        roomId,
+        partName,
+        handleMasterCommand
+    );
+
+    // Keep the audio engine's callback up to date with the latest broadcastPitch function
+    useEffect(() => {
+        broadcastPitchRef.current = broadcastPitch;
+    }, [broadcastPitch]);
 
     const isConnected = wsStatus === 'connected';
 
@@ -86,12 +136,21 @@ export default function SatellitePage() {
     }
 
     return (
-        <main className="min-h-[100dvh] bg-slate-950 text-slate-100 flex flex-col p-6 items-center justify-center">
-            <div className="w-full max-w-sm flex flex-col items-center">
+        <main className="min-h-[100dvh] bg-slate-950 text-slate-100 flex flex-col p-6 items-center justify-center relative">
+
+            {/* Recording Indicator */}
+            {isRecording && (
+                <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-red-500/20 border border-red-500/50 text-red-400 px-6 py-2 rounded-full flex items-center gap-3 font-bold shadow-lg shadow-red-500/10">
+                    <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                    지휘자 녹음 중
+                </div>
+            )}
+
+            <div className="w-full max-w-sm flex flex-col items-center mt-12">
                 {/* Active Status Badge */}
-                <div className="bg-green-500/10 text-green-400 px-4 py-2 rounded-full flex items-center gap-2 text-sm font-bold mb-12 animate-pulse">
-                    <RadioReceiver size={16} />
-                    데이터 실시간 전송 중
+                <div className={`px-4 py-2 rounded-full flex items-center gap-2 text-sm font-bold mb-12 animate-pulse ${isRecording ? 'bg-indigo-500/10 text-indigo-400' : 'bg-green-500/10 text-green-400'}`}>
+                    {isRecording ? <Mic size={16} /> : <RadioReceiver size={16} />}
+                    {isRecording ? '고음질 오디오 캡처 중' : '데이터 실시간 전송 중'}
                 </div>
 
                 <div className="text-center mb-8">
@@ -100,8 +159,8 @@ export default function SatellitePage() {
                 </div>
 
                 {/* Minimal Pitch Display (To save battery/screen distraction) */}
-                <div className="w-48 h-48 rounded-full border-4 border-slate-800 flex flex-col items-center justify-center mb-16 relative">
-                    <div className="absolute inset-0 border-4 border-indigo-500 rounded-full animate-ping opacity-20"></div>
+                <div className={`w-48 h-48 rounded-full border-4 flex flex-col items-center justify-center mb-16 relative transition-colors duration-500 ${isRecording ? 'border-red-900' : 'border-slate-800'}`}>
+                    <div className={`absolute inset-0 border-4 rounded-full animate-ping opacity-20 ${isRecording ? 'border-red-500' : 'border-indigo-500'}`}></div>
                     {pitch ? (
                         <>
                             <span className="text-5xl font-black">{pitch.note}</span>
