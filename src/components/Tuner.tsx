@@ -54,7 +54,7 @@ export default function Tuner() {
                         </div>
 
                         <div className="text-slate-500 font-mono text-sm mb-4 bg-slate-800/50 px-3 py-1 rounded-full">
-                            {Math.round(pitch.frequency)} Hz | {Math.round(smoothedCents)} cents
+                            {Math.round(pitch.frequency)} Hz | {Math.round(pitch.cents)} cents
                         </div>
 
                         {/* Status Label */}
