@@ -62,9 +62,9 @@ export function autoCorrelate(buffer: Float32Array, sampleRate: number): number 
     rms = Math.sqrt(rms / SIZE);
 
     // RMS Volume Threshold (Noise Gate / Proximity Bubble)
-    // 0.02 ~ 0.04 represents conversational volume at ~30cm.
-    // Anything quieter (background singers) is ignored.
-    if (rms < 0.02) {
+    // 0.03 ~ 0.04 represents conversational volume at ~30cm.
+    // Anything quieter (background singers or trailing voice) is ignored.
+    if (rms < 0.03) {
         return null;
     }
 
@@ -112,6 +112,14 @@ export function autoCorrelate(buffer: Float32Array, sampleRate: number): number 
             maxval = c[i];
             maxpos = i;
         }
+    }
+
+    // Periodicity / Clarity Check
+    // c[0] represents perfect overlap (maximum possible signal energy).
+    // If the detected peak (maxval) is too weak compared to c[0], 
+    // the signal is mostly unpitched noise/breath, not a clear musical note.
+    if (c[0] === 0 || maxval / c[0] < 0.6) {
+        return null;
     }
 
     let T0 = maxpos;

@@ -98,8 +98,9 @@ export function useAudioEngine(a4: number = 440) {
             const pitchData = getPitchData(avgFreq, a4Ref.current);
             setPitch(pitchData);
         } else {
-            // If no valid frequency is found, clear the smoothing buffer
+            // If no valid frequency is found, clear the smoothing buffer and UI
             recentFrequenciesRef.current = [];
+            setPitch(null);
         }
 
         // Loop using requestAnimationFrame for smooth 60fps tracking
