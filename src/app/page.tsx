@@ -2,9 +2,9 @@ import Tuner from "@/components/Tuner";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 p-4 font-[family-name:var(--font-geist-sans)]">
-      <div className="max-w-md mx-auto py-10">
-        <header className="mb-8 text-center flex flex-col items-center">
+    <main className="h-[100dvh] overflow-hidden bg-slate-950 text-slate-100 flex flex-col font-[family-name:var(--font-geist-sans)]">
+      <div className="h-full w-full max-w-md mx-auto flex flex-col px-4 py-6">
+        <header className="shrink-0 mb-6 text-center flex flex-col items-center">
           <h1 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400 tracking-tight">
             Choir Tuner
           </h1>
