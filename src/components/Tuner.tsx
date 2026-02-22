@@ -32,8 +32,8 @@ export default function Tuner() {
     const getStatus = () => {
         if (!pitch) return 'WAITING';
         // Widened tolerance for amateur choir singers
-        if (pitch.cents < -15) return 'FLAT';
-        if (pitch.cents > 15) return 'SHARP';
+        if (pitch.cents < -20) return 'FLAT';
+        if (pitch.cents > 20) return 'SHARP';
         return 'STABLE';
     };
 

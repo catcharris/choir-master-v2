@@ -90,6 +90,7 @@ export function useAudioEngine(a4: number = 440) {
     }, []);
 
     const recentFrequenciesRef = useRef<number[]>([]);
+    const lastUpdateTimeRef = useRef<number>(0);
 
     const updatePitch = useCallback(() => {
         if (!analyserRef.current || !audioContextRef.current) return;
@@ -103,18 +104,23 @@ export function useAudioEngine(a4: number = 440) {
         const frequency = autoCorrelate(buffer, audioContextRef.current.sampleRate, modeRef.current as 'vocal' | 'piano');
 
         if (frequency) {
-            // Add to moving average buffer
+            // Add to moving average buffer (runs at 60fps)
             recentFrequenciesRef.current.push(frequency);
             if (recentFrequenciesRef.current.length > 5) {
                 recentFrequenciesRef.current.shift();
             }
 
-            // Calculate moving average
-            const sum = recentFrequenciesRef.current.reduce((a, b) => a + b, 0);
-            const avgFreq = sum / recentFrequenciesRef.current.length;
+            const now = Date.now();
+            // Throttle UI updates to ~10 FPS for human readability (100ms)
+            if (now - lastUpdateTimeRef.current > 100) {
+                // Calculate moving average
+                const sum = recentFrequenciesRef.current.reduce((a, b) => a + b, 0);
+                const avgFreq = sum / recentFrequenciesRef.current.length;
 
-            const pitchData = getPitchData(avgFreq, a4Ref.current);
-            setPitch(pitchData);
+                const pitchData = getPitchData(avgFreq, a4Ref.current);
+                setPitch(pitchData);
+                lastUpdateTimeRef.current = now;
+            }
         } else {
             // If no valid frequency is found, clear the smoothing buffer but leave the last pitch on screen
             recentFrequenciesRef.current = [];
