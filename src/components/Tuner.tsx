@@ -7,20 +7,11 @@ import { Mic, MicOff, AlertCircle, ArrowDown, ArrowUp, CheckCircle, Activity } f
 export default function Tuner() {
     const { isListening, startListening, stopListening, pitch, error } = useAudioEngine();
 
-    // Smooth out just the UI cents reading slightly so it doesn't flicker too crazily, 
-    // but without delaying the primary note display.
-    const [smoothedCents, setSmoothedCents] = useState(0);
-
-    useEffect(() => {
-        if (!pitch) return;
-        setSmoothedCents(prev => prev * 0.5 + pitch.cents * 0.5); // Fast but slight smoothing
-    }, [pitch]);
-
     const getStatus = () => {
         if (!pitch) return 'WAITING';
         // Widened tolerance for amateur choir singers
-        if (smoothedCents < -15) return 'FLAT';
-        if (smoothedCents > 15) return 'SHARP';
+        if (pitch.cents < -15) return 'FLAT';
+        if (pitch.cents > 15) return 'SHARP';
         return 'STABLE';
     };
 
@@ -37,10 +28,10 @@ export default function Tuner() {
 
             {/* Instant Note Display */}
             <div className={`relative flex flex-col items-center justify-center w-72 h-72 mb-10 rounded-full border-4 transition-all duration-150 ${!isListening ? 'border-slate-800 bg-slate-800/50' :
-                    !pitch ? 'border-indigo-500/30 bg-indigo-500/10' :
-                        status === 'STABLE' ? 'border-green-500 bg-green-500/10 shadow-[0_0_50px_rgba(34,197,94,0.3)]' :
-                            status === 'FLAT' ? 'border-red-500 bg-red-500/10 shadow-[0_0_50px_rgba(239,68,68,0.3)]' :
-                                'border-blue-500 bg-blue-500/10 shadow-[0_0_50px_rgba(59,130,246,0.3)]'
+                !pitch ? 'border-indigo-500/30 bg-indigo-500/10' :
+                    status === 'STABLE' ? 'border-green-500 bg-green-500/10 shadow-[0_0_50px_rgba(34,197,94,0.3)]' :
+                        status === 'FLAT' ? 'border-red-500 bg-red-500/10 shadow-[0_0_50px_rgba(239,68,68,0.3)]' :
+                            'border-blue-500 bg-blue-500/10 shadow-[0_0_50px_rgba(59,130,246,0.3)]'
                 }`}>
                 {!isListening ? (
                     <MicOff className="text-slate-600 w-16 h-16" />
@@ -56,7 +47,7 @@ export default function Tuner() {
                     <>
                         {/* Big Note Text (Instant) */}
                         <div className={`text-8xl font-black mb-1 tracking-tighter ${status === 'STABLE' ? 'text-green-400' :
-                                status === 'FLAT' ? 'text-red-400' : 'text-blue-400'
+                            status === 'FLAT' ? 'text-red-400' : 'text-blue-400'
                             }`}>
                             {pitch.note?.replace(/[0-9]/g, '')}
                             <span className="text-4xl opacity-50 ml-1">{pitch.octave}</span>
@@ -86,8 +77,8 @@ export default function Tuner() {
             <button
                 onClick={isListening ? stopListening : startListening}
                 className={`flex items-center gap-3 px-8 py-4 rounded-full font-bold text-lg transition-all shadow-lg active:scale-95 ${isListening
-                        ? 'bg-rose-500/20 text-rose-400 border border-rose-500/50 hover:bg-rose-500/30'
-                        : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-500/30'
+                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/50 hover:bg-rose-500/30'
+                    : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-500/30'
                     }`}
             >
                 {isListening ? (
