@@ -7,6 +7,7 @@ export interface SatelliteState {
     part: string;
     pitch: PitchData | null;
     lastUpdated: number;
+    connected: boolean;
 }
 
 export function useMasterSubscriber(roomId: string) {
@@ -30,7 +31,8 @@ export function useMasterSubscriber(roomId: string) {
                 pendingStateRef.current[payload.part] = {
                     part: payload.part,
                     pitch: payload.pitch,
-                    lastUpdated: payload.timestamp
+                    lastUpdated: payload.timestamp,
+                    connected: true
                 };
 
                 // Throttle UI renders to approx 15 FPS (every ~66ms) so React 18 doesn't choke
@@ -74,9 +76,15 @@ export function useMasterSubscriber(roomId: string) {
                 let changed = false;
                 const next = { ...prev };
                 for (const part in next) {
-                    if (now - next[part].lastUpdated > 3000) {
-                        delete next[part];
-                        delete pendingStateRef.current[part];
+                    if (next[part].connected && now - next[part].lastUpdated > 3000) {
+                        // Instead of deleting the satellite, mark it as disconnected/silent
+                        // so the conductor's grid doesn't violently resize during rests
+                        next[part] = {
+                            ...next[part],
+                            connected: false,
+                            pitch: null
+                        };
+                        pendingStateRef.current[part] = next[part];
                         changed = true;
                     }
                 }
