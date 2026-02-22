@@ -48,13 +48,30 @@ export default function Tuner() {
 
             {/* Instant Note Display */}
             <div className={`relative flex flex-col items-center justify-center w-72 h-72 mb-10 rounded-full border-4 transition-all duration-150 ${!isListening ? 'border-slate-800 bg-slate-800/50' :
-                !pitch ? 'border-indigo-500/30 bg-indigo-500/10' :
-                    status === 'STABLE' ? 'border-green-500 bg-green-500/10 shadow-[0_0_50px_rgba(34,197,94,0.3)]' :
-                        status === 'FLAT' ? 'border-red-500 bg-red-500/10 shadow-[0_0_50px_rgba(239,68,68,0.3)]' :
-                            'border-blue-500 bg-blue-500/10 shadow-[0_0_50px_rgba(59,130,246,0.3)]'
+                    isAutoTuning ? 'border-amber-500/50 bg-amber-500/10 shadow-[0_0_50px_rgba(245,158,11,0.2)]' :
+                        !pitch ? 'border-indigo-500/30 bg-indigo-500/10' :
+                            status === 'STABLE' ? 'border-green-500 bg-green-500/10 shadow-[0_0_50px_rgba(34,197,94,0.3)]' :
+                                status === 'FLAT' ? 'border-red-500 bg-red-500/10 shadow-[0_0_50px_rgba(239,68,68,0.3)]' :
+                                    'border-blue-500 bg-blue-500/10 shadow-[0_0_50px_rgba(59,130,246,0.3)]'
                 }`}>
                 {!isListening ? (
                     <MicOff className="text-slate-600 w-16 h-16" />
+                ) : isAutoTuning ? (
+                    <>
+                        <Activity className="text-amber-400 w-16 h-16 mb-4 animate-pulse" />
+                        <span className="text-amber-300 font-bold text-lg text-center leading-tight">
+                            피아노 소리 듣는 중...<br />
+                            <span className="text-sm font-normal text-amber-400/80 mt-2 block">
+                                '라(A)' 건반을 길게 쳐주세요
+                            </span>
+                        </span>
+                        {/* Faint readout so user knows it's hearing at least something */}
+                        {pitch && (
+                            <div className="absolute bottom-6 text-amber-500/50 font-mono text-xs">
+                                감지 중: {pitch.note}{pitch.octave}
+                            </div>
+                        )}
+                    </>
                 ) : !pitch ? (
                     <>
                         <Activity className="text-indigo-400 w-12 h-12 mb-2 animate-bounce" />
