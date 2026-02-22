@@ -92,7 +92,7 @@ export default function MasterPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr">
                         {satelliteArray.map((sat) => {
                             const p = sat.pitch;
-                            const isStable = p?.isStable;
+                            const isStable = p ? Math.abs(p.cents) <= 20 : false;
 
                             // Dynamic color based on cents deviation
                             let barColor = 'bg-slate-700';
