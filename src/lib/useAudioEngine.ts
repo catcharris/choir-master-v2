@@ -116,6 +116,7 @@ export function useAudioEngine(a4: number = 440) {
         isListening,
         startListening,
         stopListening,
+        clearPitch: () => setPitch(null),
         pitch,
         error
     };

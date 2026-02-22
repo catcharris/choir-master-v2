@@ -7,7 +7,7 @@ import { Mic, MicOff, AlertCircle, ArrowDown, ArrowUp, CheckCircle, Activity } f
 export default function Tuner() {
     const [a4, setA4] = useState(440);
     const [isAutoTuning, setIsAutoTuning] = useState(false);
-    const { isListening, startListening, stopListening, pitch, error } = useAudioEngine(a4);
+    const { isListening, startListening, stopListening, clearPitch, pitch, error } = useAudioEngine(a4);
 
     // Auto-tuning logic for the piano 'A' note
     useEffect(() => {
@@ -48,11 +48,11 @@ export default function Tuner() {
 
             {/* Instant Note Display */}
             <div className={`relative flex flex-col items-center justify-center w-72 h-72 mb-10 rounded-full border-4 transition-all duration-150 ${!isListening ? 'border-slate-800 bg-slate-800/50' :
-                    isAutoTuning ? 'border-amber-500/50 bg-amber-500/10 shadow-[0_0_50px_rgba(245,158,11,0.2)]' :
-                        !pitch ? 'border-indigo-500/30 bg-indigo-500/10' :
-                            status === 'STABLE' ? 'border-green-500 bg-green-500/10 shadow-[0_0_50px_rgba(34,197,94,0.3)]' :
-                                status === 'FLAT' ? 'border-red-500 bg-red-500/10 shadow-[0_0_50px_rgba(239,68,68,0.3)]' :
-                                    'border-blue-500 bg-blue-500/10 shadow-[0_0_50px_rgba(59,130,246,0.3)]'
+                isAutoTuning ? 'border-amber-500/50 bg-amber-500/10 shadow-[0_0_50px_rgba(245,158,11,0.2)]' :
+                    !pitch ? 'border-indigo-500/30 bg-indigo-500/10' :
+                        status === 'STABLE' ? 'border-green-500 bg-green-500/10 shadow-[0_0_50px_rgba(34,197,94,0.3)]' :
+                            status === 'FLAT' ? 'border-red-500 bg-red-500/10 shadow-[0_0_50px_rgba(239,68,68,0.3)]' :
+                                'border-blue-500 bg-blue-500/10 shadow-[0_0_50px_rgba(59,130,246,0.3)]'
                 }`}>
                 {!isListening ? (
                     <MicOff className="text-slate-600 w-16 h-16" />
@@ -170,6 +170,7 @@ export default function Tuner() {
                             setIsAutoTuning(false);
                             stopListening();
                         } else {
+                            clearPitch();
                             setIsAutoTuning(true);
                             if (!isListening) startListening();
                         }
