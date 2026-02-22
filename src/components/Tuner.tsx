@@ -6,12 +6,14 @@ import { Mic, MicOff, AlertCircle, ArrowDown, ArrowUp, CheckCircle, Activity } f
 
 export default function Tuner() {
     const [a4, setA4] = useState(440);
-    const [isAutoTuning, setIsAutoTuning] = useState(false);
-    const { isListening, startListening, stopListening, clearPitch, pitch, error } = useAudioEngine(a4);
+    const { listenMode, startListening, stopListening, clearPitch, pitch, error } = useAudioEngine(a4);
+
+    const isListening = listenMode === 'vocal';
+    const isAutoTuning = listenMode === 'piano';
 
     // Auto-tuning logic for the piano 'A' note
     useEffect(() => {
-        if (!isAutoTuning || !pitch) return;
+        if (listenMode !== 'piano' || !pitch) return;
 
         // If we detect an A note (A3, A4, or A5)
         if (pitch.note === 'A') {
@@ -23,9 +25,9 @@ export default function Tuner() {
             // Constrain between 430 and 450 just in case
             const roundedA4 = Math.max(430, Math.min(450, Math.round(exactA4)));
             setA4(roundedA4);
-            setIsAutoTuning(false); // Stop tuning once locked
+            stopListening(); // Stop tuning once locked
         }
-    }, [pitch, isAutoTuning]);
+    }, [pitch, listenMode, stopListening]);
 
     const getStatus = () => {
         if (!pitch) return 'WAITING';
@@ -47,14 +49,14 @@ export default function Tuner() {
             )}
 
             {/* Instant Note Display */}
-            <div className={`relative flex flex-col items-center justify-center w-72 h-72 mb-10 rounded-full border-4 transition-all duration-150 ${!isListening ? 'border-slate-800 bg-slate-800/50' :
+            <div className={`relative flex flex-col items-center justify-center w-72 h-72 mb-10 rounded-full border-4 transition-all duration-150 ${listenMode === 'idle' ? 'border-slate-800 bg-slate-800/50' :
                 isAutoTuning ? 'border-amber-500/50 bg-amber-500/10 shadow-[0_0_50px_rgba(245,158,11,0.2)]' :
                     !pitch ? 'border-indigo-500/30 bg-indigo-500/10' :
                         status === 'STABLE' ? 'border-green-500 bg-green-500/10 shadow-[0_0_50px_rgba(34,197,94,0.3)]' :
                             status === 'FLAT' ? 'border-red-500 bg-red-500/10 shadow-[0_0_50px_rgba(239,68,68,0.3)]' :
                                 'border-blue-500 bg-blue-500/10 shadow-[0_0_50px_rgba(59,130,246,0.3)]'
                 }`}>
-                {!isListening ? (
+                {listenMode === 'idle' ? (
                     <MicOff className="text-slate-600 w-16 h-16" />
                 ) : isAutoTuning ? (
                     <>
@@ -112,7 +114,7 @@ export default function Tuner() {
 
             {/* Main Toggle Button */}
             <button
-                onClick={isListening ? stopListening : startListening}
+                onClick={() => isListening ? stopListening() : startListening('vocal')}
                 className={`flex items-center gap-3 px-8 py-4 rounded-full font-bold text-lg transition-all shadow-lg active:scale-95 ${isListening
                     ? 'bg-rose-500/20 text-rose-400 border border-rose-500/50 hover:bg-rose-500/30'
                     : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-500/30'
@@ -167,12 +169,9 @@ export default function Tuner() {
                 <button
                     onClick={() => {
                         if (isAutoTuning) {
-                            setIsAutoTuning(false);
                             stopListening();
                         } else {
-                            clearPitch();
-                            setIsAutoTuning(true);
-                            if (!isListening) startListening();
+                            startListening('piano');
                         }
                     }}
                     className={`w-full py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors ${isAutoTuning

@@ -51,7 +51,7 @@ export function getPitchData(frequency: number, a4: number = 440): PitchData | n
  * @param sampleRate The sample rate of the AudioContext
  * @returns The detected pitch in Hz, or null
  */
-export function autoCorrelate(buffer: Float32Array, sampleRate: number): number | null {
+export function autoCorrelate(buffer: Float32Array, sampleRate: number, mode: 'vocal' | 'piano' = 'vocal'): number | null {
     const SIZE = buffer.length;
     let rms = 0;
 
@@ -62,9 +62,10 @@ export function autoCorrelate(buffer: Float32Array, sampleRate: number): number 
     rms = Math.sqrt(rms / SIZE);
 
     // RMS Volume Threshold (Noise Gate / Proximity Bubble)
-    // 0.03 ~ 0.04 represents conversational volume at ~30cm.
-    // Anything quieter (background singers or trailing voice) is ignored.
-    if (rms < 0.03) {
+    // 0.03 represents conversational volume at ~30cm for isolation (Vocal).
+    // 0.005 allows picking up a piano across the rehearsal room (Piano).
+    const rmsThreshold = mode === 'piano' ? 0.005 : 0.03;
+    if (rms < rmsThreshold) {
         return null;
     }
 

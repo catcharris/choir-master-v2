@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { autoCorrelate, getPitchData, PitchData } from './pitch';
 
+export type ListenMode = 'idle' | 'vocal' | 'piano';
+
 export function useAudioEngine(a4: number = 440) {
-    const [isListening, setIsListening] = useState(false);
+    const [listenMode, setListenMode] = useState<ListenMode>('idle');
     const [pitch, setPitch] = useState<PitchData | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -11,13 +13,25 @@ export function useAudioEngine(a4: number = 440) {
     const streamRef = useRef<MediaStream | null>(null);
     const requestRef = useRef<number | null>(null);
     const a4Ref = useRef(a4);
+    const modeRef = useRef<ListenMode>('idle');
 
     // Keep ref synced so we don't have to recreate the update loop
     useEffect(() => {
         a4Ref.current = a4;
     }, [a4]);
 
-    const startListening = useCallback(async () => {
+    useEffect(() => {
+        modeRef.current = listenMode;
+    }, [listenMode]);
+
+    const startListening = useCallback(async (mode: 'vocal' | 'piano' = 'vocal') => {
+        // If already streaming, just swap mode and clear pitch buffer 
+        if (streamRef.current) {
+            setListenMode(mode);
+            setPitch(null);
+            return;
+        }
+
         try {
             // Request strictly RAW audio by disabling all processor flags.
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -41,16 +55,18 @@ export function useAudioEngine(a4: number = 440) {
             const source = audioCtx.createMediaStreamSource(stream);
             source.connect(analyser);
 
-            setIsListening(true);
+            setListenMode(mode);
             setError(null);
+            setPitch(null);
 
             // Start the pitch detection loop
             updatePitch();
         } catch (err) {
             console.error("Microphone access denied or audio engine failed", err);
             setError("마이크 권한을 허용해주세요. (Microphone access required)");
+            setListenMode('idle');
         }
-    }, []);
+    }, []); // Note: updatePitch is a hoisted dependency loop, but we can bypass strict linting by omitting it or refactoring. 
 
     const stopListening = useCallback(() => {
         if (requestRef.current) {
@@ -69,7 +85,7 @@ export function useAudioEngine(a4: number = 440) {
         }
 
         analyserRef.current = null;
-        setIsListening(false);
+        setListenMode('idle');
         setPitch(null);
     }, []);
 
@@ -82,7 +98,9 @@ export function useAudioEngine(a4: number = 440) {
         const buffer = new Float32Array(analyserRef.current.fftSize);
         analyserRef.current.getFloatTimeDomainData(buffer);
 
-        const frequency = autoCorrelate(buffer, audioContextRef.current.sampleRate);
+        // Pass the modeRef so autoCorrelate can dynamically adjust the RMS Proximity noise gate
+        // 'piano' mode allows far away sounds, 'vocal' stops background singers.
+        const frequency = autoCorrelate(buffer, audioContextRef.current.sampleRate, modeRef.current as 'vocal' | 'piano');
 
         if (frequency) {
             // Add to moving average buffer
@@ -113,7 +131,8 @@ export function useAudioEngine(a4: number = 440) {
     }, [stopListening]);
 
     return {
-        isListening,
+        listenMode,
+        isListening: listenMode === 'vocal',
         startListening,
         stopListening,
         clearPitch: () => setPitch(null),
