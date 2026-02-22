@@ -1,6 +1,6 @@
 // src/lib/useAudioEngine.ts
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { autoCorrelate, getPitchData, PitchData } from './pitch';
+import { detectPitchHPS, getPitchData, PitchData } from './pitch';
 
 export function useAudioEngine() {
     const [isListening, setIsListening] = useState(false);
@@ -30,7 +30,7 @@ export function useAudioEngine() {
             audioContextRef.current = audioCtx;
 
             const analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 2048; // Standard size for vocal pitch resolution
+            analyser.fftSize = 8192; // High resolution required for HPS pitch tracking
             analyserRef.current = analyser;
 
             const source = audioCtx.createMediaStreamSource(stream);
@@ -73,16 +73,18 @@ export function useAudioEngine() {
     const updatePitch = useCallback(() => {
         if (!analyserRef.current || !audioContextRef.current) return;
 
-        const buffer = new Float32Array(analyserRef.current.fftSize);
-        analyserRef.current.getFloatTimeDomainData(buffer); // Get RAW PCM data
+        // Use frequency-domain data for Harmonic Product Spectrum (HPS)
+        // Size is half of fftSize
+        const buffer = new Float32Array(analyserRef.current.frequencyBinCount);
+        analyserRef.current.getFloatFrequencyData(buffer);
 
-        const frequency = autoCorrelate(buffer, audioContextRef.current.sampleRate);
+        const frequency = detectPitchHPS(buffer, audioContextRef.current.sampleRate, analyserRef.current.fftSize);
 
-        if (frequency && frequency > 50 && frequency < 2000) { // Human vocal range broadly 50Hz - 2kHz
+        if (frequency && frequency > 70 && frequency < 1200) { // Practical human vocal range
             // Add to moving average buffer
             recentFrequenciesRef.current.push(frequency);
-            if (recentFrequenciesRef.current.length > 10) {
-                recentFrequenciesRef.current.shift(); // Keep last 10 frames (~160ms)
+            if (recentFrequenciesRef.current.length > 5) { // Shorter buffer because HPS is inherently more stable than autocorrelation
+                recentFrequenciesRef.current.shift();
             }
 
             // Calculate moving average
@@ -92,7 +94,7 @@ export function useAudioEngine() {
             const pitchData = getPitchData(avgFreq);
             setPitch(pitchData);
         } else {
-            // If no valid frequency is found, clear the smoothing buffer so the next note doesn't slide
+            // If no valid frequency is found, clear the smoothing buffer
             recentFrequenciesRef.current = [];
         }
 
