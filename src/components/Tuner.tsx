@@ -6,7 +6,26 @@ import { Mic, MicOff, AlertCircle, ArrowDown, ArrowUp, CheckCircle, Activity } f
 
 export default function Tuner() {
     const [a4, setA4] = useState(440);
+    const [isAutoTuning, setIsAutoTuning] = useState(false);
     const { isListening, startListening, stopListening, pitch, error } = useAudioEngine(a4);
+
+    // Auto-tuning logic for the piano 'A' note
+    useEffect(() => {
+        if (!isAutoTuning || !pitch) return;
+
+        // If we detect an A note (A3, A4, or A5)
+        if (pitch.note === 'A') {
+            let exactA4 = pitch.frequency;
+            if (pitch.octave === 3) exactA4 *= 2;        // A3 is ~220Hz, double it
+            else if (pitch.octave === 5) exactA4 /= 2;   // A5 is ~880Hz, halve it
+            else if (pitch.octave !== 4) return;         // Ignore A2, A6 etc.
+
+            // Constrain between 430 and 450 just in case
+            const roundedA4 = Math.max(430, Math.min(450, Math.round(exactA4)));
+            setA4(roundedA4);
+            setIsAutoTuning(false); // Stop tuning once locked
+        }
+    }, [pitch, isAutoTuning]);
 
     const getStatus = () => {
         if (!pitch) return 'WAITING';
@@ -99,12 +118,16 @@ export default function Tuner() {
             </p>
 
             {/* A4 Calibration Settings */}
-            <div className="w-full max-w-[280px] bg-slate-800/40 px-6 py-4 rounded-3xl border border-slate-700/50 flex flex-col items-center gap-3">
-                <span className="text-slate-400 text-sm font-medium">피아노 기준음 (A4) 교정</span>
+            <div className={`w-full max-w-[280px] bg-slate-800/40 px-6 py-4 rounded-3xl border flex flex-col items-center gap-3 transition-colors ${isAutoTuning ? 'border-indigo-500/50 shadow-[0_0_20px_rgba(99,102,241,0.2)]' : 'border-slate-700/50'
+                }`}>
+                <span className="text-slate-400 text-sm font-medium">
+                    피아노 기준음 (A4) 교정
+                </span>
+
                 <div className="flex items-center gap-4 w-full justify-center">
                     <button
                         onClick={() => setA4(prev => Math.max(430, prev - 1))}
-                        disabled={isListening}
+                        disabled={isListening || isAutoTuning}
                         className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white transition-colors disabled:opacity-30 disabled:hover:bg-slate-700"
                     >
                         -
@@ -115,12 +138,39 @@ export default function Tuner() {
                     </div>
                     <button
                         onClick={() => setA4(prev => Math.min(450, prev + 1))}
-                        disabled={isListening}
+                        disabled={isListening || isAutoTuning}
                         className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white transition-colors disabled:opacity-30 disabled:hover:bg-slate-700"
                     >
                         +
                     </button>
                 </div>
+
+                <div className="w-full h-px bg-slate-700/50 my-1"></div>
+
+                <button
+                    onClick={() => {
+                        if (isAutoTuning) {
+                            setIsAutoTuning(false);
+                            stopListening();
+                        } else {
+                            setIsAutoTuning(true);
+                            if (!isListening) startListening();
+                        }
+                    }}
+                    className={`w-full py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors ${isAutoTuning
+                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 animate-pulse'
+                        : 'bg-slate-700/50 hover:bg-slate-700 text-slate-300'
+                        }`}
+                >
+                    {isAutoTuning ? (
+                        <>
+                            <Activity size={16} />
+                            피아노 '라(A)' 음을 쳐주세요...
+                        </>
+                    ) : (
+                        "🎙️ 피아노 소리 듣고 자동 맞춤"
+                    )}
+                </button>
             </div>
         </div>
     );
