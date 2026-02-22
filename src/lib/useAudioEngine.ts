@@ -3,7 +3,7 @@ import { autoCorrelate, getPitchData, PitchData } from './pitch';
 
 export type ListenMode = 'idle' | 'vocal' | 'piano';
 
-export function useAudioEngine(a4: number = 440) {
+export function useAudioEngine(a4: number = 440, onPitchUpdate?: (pitch: PitchData | null) => void) {
     const [listenMode, setListenMode] = useState<ListenMode>('idle');
     const [pitch, setPitch] = useState<PitchData | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -14,6 +14,11 @@ export function useAudioEngine(a4: number = 440) {
     const requestRef = useRef<number | null>(null);
     const a4Ref = useRef(a4);
     const modeRef = useRef<ListenMode>('idle');
+    const onPitchUpdateRef = useRef(onPitchUpdate);
+
+    useEffect(() => {
+        onPitchUpdateRef.current = onPitchUpdate;
+    }, [onPitchUpdate]);
 
     // Keep ref synced so we don't have to recreate the update loop
     useEffect(() => {
@@ -87,6 +92,7 @@ export function useAudioEngine(a4: number = 440) {
         analyserRef.current = null;
         setListenMode('idle');
         setPitch(null);
+        if (onPitchUpdateRef.current) onPitchUpdateRef.current(null);
     }, []);
 
     const recentFrequenciesRef = useRef<number[]>([]);
@@ -131,11 +137,14 @@ export function useAudioEngine(a4: number = 440) {
 
                 const pitchData = getPitchData(avgFreq, a4Ref.current);
                 setPitch(pitchData);
+                if (onPitchUpdateRef.current) onPitchUpdateRef.current(pitchData);
                 lastUpdateTimeRef.current = now;
             }
         } else {
             // If no valid frequency is found, clear the smoothing buffer but leave the last pitch on screen
             recentFrequenciesRef.current = [];
+            // Optionally, we could send a null here if we wanted to show 'silence', 
+            // but keeping the last known payload prevents flickering.
         }
 
         // Loop using requestAnimationFrame for smooth 60fps tracking
