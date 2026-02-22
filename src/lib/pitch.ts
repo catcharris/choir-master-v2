@@ -45,81 +45,89 @@ export function getPitchData(frequency: number, a4: number = 440): PitchData | n
 /**
  * Auto-correlation based pitch detection algorithm.
  * Excellent for monotonic vocal pitch detection.
+ * Excellent for vocal pitch detection, robust to distance/volume drop-offs.
  * 
- * @param buffer Float32Array containing PCM audio data from AnalyserNode
- * @param sampleRate The sample rate of the AudioContext (e.g., 44100 or 48000)
- * @returns The detected fundamental frequency in Hz, or null if no clear pitch is found.
- */
-/**
- * Harmonic Product Spectrum (HPS) pitch detection algorithm.
- * Better for human voices/choirs as it relies on the resonant harmonics 
- * rather than the raw fundamental vocal cord vibration.
- * 
- * @param frequencyData Float32Array containing FFT frequency data (from getFloatFrequencyData)
+ * @param buffer Float32Array containing time-domain PCM audio data (from getFloatTimeDomainData)
  * @param sampleRate The sample rate of the AudioContext
- * @param fftSize The FFT window size
  * @returns The detected pitch in Hz, or null
  */
-export function detectPitchHPS(frequencyData: Float32Array, sampleRate: number, fftSize: number): number | null {
-    const NUM_HARMONICS = 5; // Downsampling factor (x1 to x5)
+export function autoCorrelate(buffer: Float32Array, sampleRate: number): number | null {
+    const SIZE = buffer.length;
+    let rms = 0;
 
-    const magnitudes = new Float32Array(frequencyData.length);
-    let maxMag = 0;
+    for (let i = 0; i < SIZE; i++) {
+        const val = buffer[i];
+        rms += val * val;
+    }
+    rms = Math.sqrt(rms / SIZE);
 
-    // WebAudio getFloatFrequencyData returns dBFS (typically -100 to 0).
-    // We need to shift it up so the noise floor is near 0, and peaks are positive.
-    // Raising MIN_DB to -45 strictly isolates loud/close proximity singing (within ~20cm)
-    const MIN_DB = -45; // Ignore anything below -45dB
-
-    for (let i = 0; i < frequencyData.length; i++) {
-        const db = frequencyData[i];
-        let mag = 0;
-        if (db > MIN_DB) {
-            mag = db - MIN_DB; // Shift up 
-        }
-        magnitudes[i] = mag;
-        if (mag > maxMag) maxMag = mag;
+    // RMS Volume Threshold (Noise Gate / Proximity Bubble)
+    // 0.02 ~ 0.04 represents conversational volume at ~30cm.
+    // Anything quieter (background singers) is ignored.
+    if (rms < 0.02) {
+        return null;
     }
 
-    // Noise gate: If the absolute loudest frequency is still very quiet, return null
-    if (maxMag < 5) return null;
+    // 1. Find a signal's starting edge
+    let r1 = 0;
+    let r2 = SIZE - 1;
+    let thres = 0.2;
 
-    // The resolution (Hz per array bin)
-    const binSize = (sampleRate / 2) / frequencyData.length;
-
-    // Compute Harmonic Product Spectrum
-    const hps = new Float32Array(frequencyData.length);
-    for (let i = 0; i < hps.length; i++) {
-        let product = magnitudes[i];
-
-        // Multiply by harmonics
-        for (let h = 2; h <= NUM_HARMONICS; h++) {
-            const harmonicIndex = i * h;
-            if (harmonicIndex < magnitudes.length) {
-                // Critical Fix: If a distant overtone falls below the noise gate (mag = 0),
-                // multiplying by 0 destroys the entire reading. Default to 1 instead.
-                product *= Math.max(1, magnitudes[harmonicIndex]);
-            }
-        }
-        hps[i] = product;
-    }
-
-    // Find the peak in the HPS array within human vocal range
-    let maxHps = 0;
-    let maxHpsIndex = -1;
-
-    const minBin = Math.floor(70 / binSize); // Bass ~70Hz
-    const maxBin = Math.floor(1200 / binSize); // Soprano ~1200Hz
-
-    for (let i = minBin; i <= maxBin; i++) {
-        if (hps[i] > maxHps) {
-            maxHps = hps[i];
-            maxHpsIndex = i;
+    for (let i = 0; i < SIZE / 2; i++) {
+        if (Math.abs(buffer[i]) < thres) {
+            r1 = i;
+            break;
         }
     }
 
-    // Since we multiplied magnitudes, the maxHps can be extremely large or 0
-    if (maxHpsIndex === -1 || maxHps === 0) return null;
+    // 2. Find a signal's ending edge
+    for (let i = 1; i < SIZE / 2; i++) {
+        if (Math.abs(buffer[SIZE - i]) < thres) {
+            r2 = SIZE - i;
+            break;
+        }
+    }
 
-    return maxHpsIndex * binSize;
+    let buf = buffer.slice(r1, r2);
+    const newSize = buf.length;
+
+    // 3. Auto-correlation calculation
+    const c = new Array(newSize).fill(0);
+    for (let i = 0; i < newSize; i++) {
+        for (let j = 0; j < newSize - i; j++) {
+            c[i] = c[i] + buf[j] * buf[j + i];
+        }
+    }
+
+    // 4. Find the first significant peak
+    let d = 0;
+    while (c[d] > c[d + 1]) {
+        d++;
+    }
+
+    let maxval = -1;
+    let maxpos = -1;
+    for (let i = d; i < newSize; i++) {
+        if (c[i] > maxval) {
+            maxval = c[i];
+            maxpos = i;
+        }
+    }
+
+    let T0 = maxpos;
+
+    // 5. Parabolic interpolation for fine tuning the sub-sample peak
+    let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+    let a = (x1 + x3 - 2 * x2) / 2;
+    let b = (x3 - x1) / 2;
+    if (a) {
+        T0 = T0 - b / (2 * a);
+    }
+
+    const frequency = sampleRate / T0;
+
+    // Vocal + Piano constraint (70Hz to 1200Hz)
+    if (frequency < 70 || frequency > 1200) return null;
+
+    return frequency;
 }

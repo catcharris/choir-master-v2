@@ -1,6 +1,5 @@
-// src/lib/useAudioEngine.ts
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { detectPitchHPS, getPitchData, PitchData } from './pitch';
+import { autoCorrelate, getPitchData, PitchData } from './pitch';
 
 export function useAudioEngine(a4: number = 440) {
     const [isListening, setIsListening] = useState(false);
@@ -36,7 +35,7 @@ export function useAudioEngine(a4: number = 440) {
             audioContextRef.current = audioCtx;
 
             const analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 8192; // High resolution required for HPS pitch tracking
+            analyser.fftSize = 4096; // Good resolution for time-domain autocorrelation
             analyserRef.current = analyser;
 
             const source = audioCtx.createMediaStreamSource(stream);
@@ -79,17 +78,16 @@ export function useAudioEngine(a4: number = 440) {
     const updatePitch = useCallback(() => {
         if (!analyserRef.current || !audioContextRef.current) return;
 
-        // Use frequency-domain data for Harmonic Product Spectrum (HPS)
-        // Size is half of fftSize
-        const buffer = new Float32Array(analyserRef.current.frequencyBinCount);
-        analyserRef.current.getFloatFrequencyData(buffer);
+        // Use time-domain data for Auto-Correlation (Waveform shape, not raw decibels)
+        const buffer = new Float32Array(analyserRef.current.fftSize);
+        analyserRef.current.getFloatTimeDomainData(buffer);
 
-        const frequency = detectPitchHPS(buffer, audioContextRef.current.sampleRate, analyserRef.current.fftSize);
+        const frequency = autoCorrelate(buffer, audioContextRef.current.sampleRate);
 
-        if (frequency && frequency > 70 && frequency < 1200) { // Practical human vocal range
+        if (frequency) {
             // Add to moving average buffer
             recentFrequenciesRef.current.push(frequency);
-            if (recentFrequenciesRef.current.length > 5) { // Shorter buffer because HPS is inherently more stable than autocorrelation
+            if (recentFrequenciesRef.current.length > 5) {
                 recentFrequenciesRef.current.shift();
             }
 
