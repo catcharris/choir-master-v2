@@ -69,20 +69,21 @@ export function detectPitchHPS(frequencyData: Float32Array, sampleRate: number, 
 
     // WebAudio getFloatFrequencyData returns dBFS (typically -100 to 0).
     // We need to shift it up so the noise floor is near 0, and peaks are positive.
-    const MIN_DB = -90; // Ignore anything below -90dB
+    // Raising MIN_DB to -45 strictly isolates loud/close proximity singing (within ~20cm)
+    const MIN_DB = -45; // Ignore anything below -45dB
 
     for (let i = 0; i < frequencyData.length; i++) {
         const db = frequencyData[i];
         let mag = 0;
         if (db > MIN_DB) {
-            mag = db - MIN_DB; // Shift up: e.g. -40dB becomes 50. 
+            mag = db - MIN_DB; // Shift up 
         }
         magnitudes[i] = mag;
         if (mag > maxMag) maxMag = mag;
     }
 
     // Noise gate: If the absolute loudest frequency is still very quiet, return null
-    if (maxMag < 10) return null; // e.g., if louder than -80dB
+    if (maxMag < 5) return null;
 
     // The resolution (Hz per array bin)
     const binSize = (sampleRate / 2) / frequencyData.length;
