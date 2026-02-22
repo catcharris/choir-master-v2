@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { detectPitchHPS, getPitchData, PitchData } from './pitch';
 
-export function useAudioEngine() {
+export function useAudioEngine(a4: number = 440) {
     const [isListening, setIsListening] = useState(false);
     const [pitch, setPitch] = useState<PitchData | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -11,6 +11,12 @@ export function useAudioEngine() {
     const analyserRef = useRef<AnalyserNode | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const requestRef = useRef<number | null>(null);
+    const a4Ref = useRef(a4);
+
+    // Keep ref synced so we don't have to recreate the update loop
+    useEffect(() => {
+        a4Ref.current = a4;
+    }, [a4]);
 
     const startListening = useCallback(async () => {
         try {
@@ -91,7 +97,7 @@ export function useAudioEngine() {
             const sum = recentFrequenciesRef.current.reduce((a, b) => a + b, 0);
             const avgFreq = sum / recentFrequenciesRef.current.length;
 
-            const pitchData = getPitchData(avgFreq);
+            const pitchData = getPitchData(avgFreq, a4Ref.current);
             setPitch(pitchData);
         } else {
             // If no valid frequency is found, clear the smoothing buffer

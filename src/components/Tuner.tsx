@@ -5,7 +5,8 @@ import { useAudioEngine } from '@/lib/useAudioEngine';
 import { Mic, MicOff, AlertCircle, ArrowDown, ArrowUp, CheckCircle, Activity } from 'lucide-react';
 
 export default function Tuner() {
-    const { isListening, startListening, stopListening, pitch, error } = useAudioEngine();
+    const [a4, setA4] = useState(440);
+    const { isListening, startListening, stopListening, pitch, error } = useAudioEngine(a4);
 
     const getStatus = () => {
         if (!pitch) return 'WAITING';
@@ -93,9 +94,34 @@ export default function Tuner() {
                     </>
                 )}
             </button>
-            <p className="text-slate-500 text-sm mt-4 text-center max-w-xs">
+            <p className="text-slate-500 text-sm mt-4 text-center max-w-xs mb-6">
                 {isListening ? "단원의 정확한 음정(음 이탈)을 즉시 확인합니다." : "합창 단원 정밀 피치 트래커"}
             </p>
+
+            {/* A4 Calibration Settings */}
+            <div className="w-full max-w-[280px] bg-slate-800/40 px-6 py-4 rounded-3xl border border-slate-700/50 flex flex-col items-center gap-3">
+                <span className="text-slate-400 text-sm font-medium">피아노 기준음 (A4) 교정</span>
+                <div className="flex items-center gap-4 w-full justify-center">
+                    <button
+                        onClick={() => setA4(prev => Math.max(430, prev - 1))}
+                        disabled={isListening}
+                        className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white transition-colors disabled:opacity-30 disabled:hover:bg-slate-700"
+                    >
+                        -
+                    </button>
+                    <div className="w-24 text-center">
+                        <span className="font-mono font-bold text-2xl text-indigo-300">{a4}</span>
+                        <span className="text-slate-500 ml-1 text-sm">Hz</span>
+                    </div>
+                    <button
+                        onClick={() => setA4(prev => Math.min(450, prev + 1))}
+                        disabled={isListening}
+                        className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white transition-colors disabled:opacity-30 disabled:hover:bg-slate-700"
+                    >
+                        +
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }

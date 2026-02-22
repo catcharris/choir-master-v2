@@ -1,6 +1,5 @@
 // src/lib/pitch.ts
 
-const A4 = 440;
 const A4_INDEX = 69; // MIDI note number for A4
 const NOTE_STRINGS = [
     "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
@@ -16,18 +15,18 @@ export interface PitchData {
 /**
  * Converts a frequency in Hz to the closest MIDI note number.
  */
-export function freqToMidi(freq: number): number {
-    return Math.round(A4_INDEX + 12 * Math.log2(freq / A4));
+export function freqToMidi(freq: number, a4: number = 440): number {
+    return Math.round(A4_INDEX + 12 * Math.log2(freq / a4));
 }
 
 /**
  * Converts a frequency in Hz to a PitchData object containing the note string and cents deviation.
  */
-export function getPitchData(frequency: number): PitchData | null {
+export function getPitchData(frequency: number, a4: number = 440): PitchData | null {
     if (frequency <= 0) return null;
 
-    const midi = freqToMidi(frequency);
-    const perfectFreq = A4 * Math.pow(2, (midi - A4_INDEX) / 12);
+    const midi = freqToMidi(frequency, a4);
+    const perfectFreq = a4 * Math.pow(2, (midi - A4_INDEX) / 12);
 
     // Calculate cents deviation: 1200 * log2(freq / perfectFreq)
     const cents = Math.round(1200 * Math.log2(frequency / perfectFreq));
