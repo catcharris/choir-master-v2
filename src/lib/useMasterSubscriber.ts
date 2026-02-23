@@ -101,11 +101,10 @@ export function useMasterSubscriber(roomId: string) {
         };
     }, [disconnect]);
 
-    // Command broadcast for Phase 3 and Phase 8
-    const broadcastCommand = useCallback((action: 'START_RECORD' | 'STOP_RECORD' | 'PRELOAD_MR', url?: string) => {
+    // Command broadcast for Phase 3, 8 and 10
+    const broadcastCommand = useCallback((action: 'START_RECORD' | 'STOP_RECORD' | 'PRELOAD_MR' | 'SCORE_SYNC' | 'PAGE_SYNC', payloadData?: Record<string, any>) => {
         if (channelRef.current && status === 'connected') {
-            const payload: any = { action, timestamp: Date.now() };
-            if (url) payload.url = url;
+            const payload: any = { action, ...payloadData, timestamp: Date.now() };
 
             channelRef.current.send({
                 type: 'broadcast',

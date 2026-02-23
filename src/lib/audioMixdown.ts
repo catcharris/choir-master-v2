@@ -77,6 +77,8 @@ export async function mixdownTracks(
     tracks: PracticeTrack[],
     volumes: Record<string, number>,
     muted: Record<string, boolean>,
+    panning: Record<string, number>,
+    masterEq: { low: number, mid: number, high: number },
     reverbAmount: number = 0, // 0.0 to 1.0 (Wet/Dry mix)
     mrUrl?: string | null     // Optional backing track to layer in
 ): Promise<Blob> {
@@ -130,7 +132,33 @@ export async function mixdownTracks(
     const tailLength = reverbAmount > 0 ? 3.0 : 0;
     const offlineCtx = new OfflineAudioContext(2, sampleRate * (maxDuration + tailLength), sampleRate);
 
-    // 4. Setup Master Reverb Bus (if applicable)
+    // 4. Setup Master Buss Routing (EQ -> Reverb -> Destination)
+    const masterOut = offlineCtx.createGain();
+
+    // Master 3-Band EQ
+    const lowNode = offlineCtx.createBiquadFilter();
+    lowNode.type = 'lowshelf';
+    lowNode.frequency.value = 300;
+    lowNode.gain.value = masterEq.low;
+
+    const midNode = offlineCtx.createBiquadFilter();
+    midNode.type = 'peaking';
+    midNode.frequency.value = 1000;
+    midNode.Q.value = 0.5;
+    midNode.gain.value = masterEq.mid;
+
+    const highNode = offlineCtx.createBiquadFilter();
+    highNode.type = 'highshelf';
+    highNode.frequency.value = 4000;
+    highNode.gain.value = masterEq.high;
+
+    // Connect EQ chain
+    masterOut.connect(lowNode);
+    lowNode.connect(midNode);
+    midNode.connect(highNode);
+
+    let finalMasterIn = highNode; // If no reverb, this connects to destination
+
     let masterReverb: ConvolverNode | null = null;
     let reverbGain: GainNode | null = null;
     let dryGain: GainNode | null = null;
@@ -143,13 +171,19 @@ export async function mixdownTracks(
         reverbGain.gain.value = reverbAmount; // Wet level
 
         dryGain = offlineCtx.createGain();
-        dryGain.gain.value = 1.0 - (reverbAmount * 0.5); // Slightly duck the dry signal when wet is high
+        dryGain.gain.value = 1.0 - (reverbAmount * 0.5); // Slightly duck the dry signal
 
+        finalMasterIn.connect(dryGain);
+        finalMasterIn.connect(masterReverb);
         masterReverb.connect(reverbGain);
+
+        dryGain.connect(offlineCtx.destination);
         reverbGain.connect(offlineCtx.destination);
+    } else {
+        finalMasterIn.connect(offlineCtx.destination);
     }
 
-    // 5. Mix individual tracks into the busses
+    // 5. Mix individual tracks into the Master Buss
     for (const b of buffers) {
         const source = offlineCtx.createBufferSource();
         source.buffer = b.buffer;
@@ -158,17 +192,13 @@ export async function mixdownTracks(
         const isMuted = muted[b.trackId] ?? false;
         trackGain.gain.value = isMuted ? 0 : (volumes[b.trackId] ?? 1.0);
 
-        source.connect(trackGain);
+        // Stereo Panning
+        const trackPan = offlineCtx.createStereoPanner();
+        trackPan.pan.value = panning[b.trackId] ?? 0;
 
-        if (reverbAmount > 0 && dryGain && masterReverb) {
-            // Send to both Dry out and Reverb out (parallel processing)
-            trackGain.connect(dryGain);
-            trackGain.connect(masterReverb);
-            dryGain.connect(offlineCtx.destination);
-        } else {
-            // Default straight to master
-            trackGain.connect(offlineCtx.destination);
-        }
+        source.connect(trackGain);
+        trackGain.connect(trackPan);
+        trackPan.connect(masterOut);
 
         source.start(0);
     }

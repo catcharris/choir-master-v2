@@ -1,9 +1,18 @@
+import Link from 'next/link';
+import { Home } from 'lucide-react';
 import Tuner from "@/components/Tuner";
 
 export default function TunerPage() {
     return (
-        <main className="h-[100dvh] overflow-hidden bg-slate-950 text-slate-100 flex flex-col font-[family-name:var(--font-geist-sans)]">
-            <div className="h-full w-full max-w-md mx-auto flex flex-col px-4 py-6">
+        <main className="h-[100dvh] overflow-hidden bg-slate-950 text-slate-100 flex flex-col font-sans">
+            {/* Home Navigation */}
+            <div className="absolute top-6 left-6 z-20">
+                <Link href="/" className="flex items-center justify-center w-12 h-12 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-2xl backdrop-blur-md transition-all border border-white/5 hover:border-white/20">
+                    <Home size={20} />
+                </Link>
+            </div>
+
+            <div className="h-full w-full max-w-md mx-auto flex flex-col px-4 py-8">
                 <header className="shrink-0 mb-6 text-center flex flex-col items-center">
                     <h1 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400 tracking-tight">
                         Personal Tuner

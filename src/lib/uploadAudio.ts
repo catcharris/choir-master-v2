@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import toast from 'react-hot-toast';
 
 export async function uploadAudioBlob(blob: Blob, roomId: string, partName: string) {
     if (!blob || blob.size === 0) {
@@ -28,7 +29,7 @@ export async function uploadAudioBlob(blob: Blob, roomId: string, partName: stri
 
         if (error) {
             console.error("Supabase Storage upload error:", error);
-            alert("업로드 실패 (에러): " + error.message);
+            toast.error("업로드 실패 (에러): " + error.message);
             throw error;
         }
 

@@ -39,12 +39,15 @@ export function SatelliteGrid({ roomId, satellites }: SatelliteGridProps) {
                 }
 
                 return (
-                    <div key={sat.part} className={`bg-slate-900 border ${sat.connected ? 'border-indigo-500/30' : 'border-slate-800 opacity-60'} rounded-3xl p-6 flex flex-col relative overflow-hidden transition-all duration-300 shadow-none`}>
-                        <div className="flex justify-between items-start mb-6">
-                            <h2 className="text-2xl font-black text-white">{sat.part}</h2>
+                    <div key={sat.part} className={`relative overflow-hidden rounded-3xl p-6 flex flex-col transition-all duration-500 transform hover:scale-[1.02] active:scale-[0.98] ${sat.connected ? 'bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl shadow-indigo-500/10' : 'bg-slate-900/40 backdrop-blur-md border border-slate-800/50 opacity-70'}`}>
+                        {/* Elegant Background Glow */}
+                        {sat.connected && <div className={`absolute top-0 right-0 w-32 h-32 blur-[60px] rounded-full opacity-30 pointer-events-none transition-colors duration-500 ${isStable ? 'bg-green-500' : p?.cents && p.cents > 0 ? 'bg-rose-500' : p?.cents && p.cents < 0 ? 'bg-blue-500' : 'bg-indigo-500'}`} />}
+
+                        <div className="flex justify-between items-start mb-6 z-10">
+                            <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-br from-white to-slate-400">{sat.part}</h2>
                             {p ? (
-                                <span className={`text-xs font-bold px-2 py-1 rounded w-16 text-center ${isStable ? 'bg-green-500/20 text-green-400' : 'bg-slate-800 text-slate-400'}`}>
-                                    {isStable ? 'STABLE' : 'ADJUST'}
+                                <span className={`text-[10px] font-black tracking-wider px-3 py-1.5 rounded-full text-center transition-colors duration-300 shadow-inner border ${isStable ? 'bg-green-500/20 text-green-400 border-green-500/30 shadow-green-500/10' : 'bg-slate-800/80 text-slate-300 border-slate-700 shadow-black/20'}`}>
+                                    {isStable ? 'PERFECT' : 'ADJUST'}
                                 </span>
                             ) : (
                                 <span className="text-[10px] font-bold px-2 py-1 rounded bg-slate-800 text-slate-500">
@@ -53,12 +56,12 @@ export function SatelliteGrid({ roomId, satellites }: SatelliteGridProps) {
                             )}
                         </div>
 
-                        <div className="flex-1 flex flex-col items-center justify-center mb-6">
+                        <div className="flex-1 flex flex-col items-center justify-center mb-6 z-10">
                             {p ? (
                                 <>
-                                    <div className="text-[5rem] leading-none font-black tracking-tighter tabular-nums flex items-end">
+                                    <div className="text-[5.5rem] leading-none font-black tracking-tighter tabular-nums flex items-end drop-shadow-xl">
                                         {p.note}
-                                        <span className="text-2xl font-medium text-slate-500 mb-4 ml-1">
+                                        <span className={`text-2xl font-bold mb-4 ml-1 transition-colors duration-300 ${isStable ? 'text-green-400' : 'text-slate-400'}`}>
                                             {p.cents > 0 ? '+' : ''}{p.cents}
                                         </span>
                                     </div>
@@ -75,11 +78,11 @@ export function SatelliteGrid({ roomId, satellites }: SatelliteGridProps) {
                         </div>
 
                         {/* Visual Pitch Bar */}
-                        <div className={`h-2 w-full rounded-full overflow-hidden relative transition-colors duration-500 ${sat.connected ? 'bg-slate-800' : 'bg-slate-800/30'}`}>
-                            <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-slate-600 z-10" />
+                        <div className={`h-2.5 w-full rounded-full overflow-hidden relative transition-colors duration-500 shadow-inner z-10 ${sat.connected ? 'bg-black/40 border border-white/5' : 'bg-slate-800/30'}`}>
+                            <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-white/20 z-10" />
                             {p && (
                                 <div
-                                    className={`h-full transition-all duration-100 ease-linear ${barColor}`}
+                                    className={`h-full transition-all duration-150 ease-out shadow-[0_0_10px_rgba(0,0,0,0.5)] ${barColor}`}
                                     style={{
                                         width: '50%',
                                         transform: `translateX(${p.cents > 0 ? 100 : 0}%) scaleX(${Math.abs(p.cents) / 50})`,
@@ -88,7 +91,7 @@ export function SatelliteGrid({ roomId, satellites }: SatelliteGridProps) {
                                 />
                             )}
                         </div>
-                        <div className="flex justify-between text-[10px] text-slate-500 font-bold mt-2 opacity-50">
+                        <div className="flex justify-between text-[9px] text-slate-500 font-bold mt-2 opacity-60 tracking-widest z-10">
                             <span>FLAT</span>
                             <span>PERFECT</span>
                             <span>SHARP</span>

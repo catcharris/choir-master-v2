@@ -1,5 +1,5 @@
-import React from 'react';
-import { SignalHigh, Users, FolderOpen, LogOut, Music } from 'lucide-react';
+import Link from 'next/link';
+import { Home, SignalHigh, Users, FolderOpen, LogOut, Music, FileImage, Video, VideoOff, Presentation } from 'lucide-react';
 
 interface MasterHeaderProps {
     roomId: string;
@@ -9,7 +9,13 @@ interface MasterHeaderProps {
     mrUrl: string | null;
     onToggleRecord: () => void;
     onMRUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+    onScoreUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+    isUploadingScore: boolean;
+    isCamActive: boolean;
+    onToggleCam: () => void;
     onOpenDrawer: () => void;
+    hasScore: boolean;
+    onOpenScore: () => void;
     onDisconnect: () => void;
 }
 
@@ -21,13 +27,22 @@ export function MasterHeader({
     mrUrl,
     onToggleRecord,
     onMRUpload,
+    onScoreUpload,
+    isUploadingScore,
+    isCamActive,
+    onToggleCam,
     onOpenDrawer,
+    hasScore,
+    onOpenScore,
     onDisconnect
 }: MasterHeaderProps) {
     return (
         <header className="px-6 py-4 flex items-center justify-between border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-10 transition-colors duration-500">
             <div className="flex items-center gap-4">
-                <div className={`flex items-center gap-2 font-bold px-3 py-1.5 rounded-lg transition-colors duration-500 ${isRecordingMaster ? 'bg-red-500/20 text-red-500' : 'bg-indigo-500/10 text-indigo-400'}`}>
+                <Link href="/" className="flex items-center justify-center w-10 h-10 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-colors shrink-0">
+                    <Home size={18} />
+                </Link>
+                <div className={`flex items-center gap-2 font-bold px-3 py-1.5 rounded-lg transition-colors duration-500 hidden sm:flex ${isRecordingMaster ? 'bg-red-500/20 text-red-500' : 'bg-indigo-500/10 text-indigo-400'}`}>
                     <SignalHigh size={18} className="animate-pulse" />
                     ROOM {roomId} {isRecordingMaster && "• REC"}
                 </div>
@@ -45,12 +60,50 @@ export function MasterHeader({
                     </span>
                     <input
                         type="file"
-                        accept="audio/*"
+                        accept="audio/*,video/*,.mp3,.m4a,.wav,.aac,.mp4,.mov,*/*"
                         onChange={onMRUpload}
                         disabled={isUploadingMR}
                         className="hidden"
                     />
                 </label>
+
+                {/* Score Upload Button */}
+                <label className={`flex items-center gap-2 px-3 py-2 text-sm font-bold rounded-xl transition-colors shadow-lg cursor-pointer bg-slate-700 hover:bg-slate-600 text-slate-200 shadow-black/20 ${isUploadingScore ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <FileImage size={16} />
+                    <span className="hidden sm:inline">
+                        {isUploadingScore ? '업로드 중...' : '새 악보 올리기'}
+                    </span>
+                    <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={onScoreUpload}
+                        disabled={isUploadingScore}
+                        className="hidden"
+                    />
+                </label>
+
+                {/* View Score Button (only if scores exist) */}
+                {hasScore && (
+                    <button
+                        onClick={onOpenScore}
+                        className="flex items-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-emerald-500/20"
+                    >
+                        <Presentation size={16} />
+                        <span className="hidden sm:inline">악보 열기</span>
+                    </button>
+                )}
+
+                {/* Maestro Cam Toggle Button */}
+                <button
+                    onClick={onToggleCam}
+                    className={`flex items-center gap-2 px-3 py-2 text-sm font-bold rounded-xl transition-colors shadow-lg shadow-black/20 ${isCamActive ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/20' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}`}
+                >
+                    {isCamActive ? <Video size={16} className="animate-pulse" /> : <VideoOff size={16} />}
+                    <span className="hidden sm:inline">
+                        {isCamActive ? '지휘자 캠 송출 중' : '지휘자 캠 켜기'}
+                    </span>
+                </button>
 
                 <button
                     onClick={onOpenDrawer}
