@@ -101,16 +101,16 @@ export function useMasterSubscriber(roomId: string) {
         };
     }, [disconnect]);
 
-    // Command broadcast for Phase 3: Recording Sync
-    const broadcastCommand = useCallback((action: 'START_RECORD' | 'STOP_RECORD') => {
+    // Command broadcast for Phase 3 and Phase 8
+    const broadcastCommand = useCallback((action: 'START_RECORD' | 'STOP_RECORD' | 'PRELOAD_MR', url?: string) => {
         if (channelRef.current && status === 'connected') {
+            const payload: any = { action, timestamp: Date.now() };
+            if (url) payload.url = url;
+
             channelRef.current.send({
                 type: 'broadcast',
                 event: 'master_command',
-                payload: {
-                    action,
-                    timestamp: Date.now()
-                }
+                payload
             }).catch(err => console.error("Failed to broadcast command:", err));
         }
     }, [status]);

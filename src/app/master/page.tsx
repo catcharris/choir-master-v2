@@ -1,13 +1,51 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMasterSubscriber } from '@/lib/useMasterSubscriber';
-import { LayoutGrid, LogOut, Users, Activity, SignalHigh } from 'lucide-react';
+import { LayoutGrid } from 'lucide-react';
+import { fetchRoomTracks, PracticeTrack } from '@/lib/storageUtils';
+import { uploadBackingTrack, fetchLatestBackingTrack } from '@/lib/backingTrackUtils';
+
+import { MasterHeader } from '@/components/master/MasterHeader';
+import { SatelliteGrid, SatelliteData } from '@/components/master/SatelliteGrid';
+import { RecordingsDrawer } from '@/components/master/RecordingsDrawer';
 
 export default function MasterPage() {
     const [roomId, setRoomId] = useState('');
+    const [isRecordingMaster, setIsRecordingMaster] = useState(false);
     const { status: wsStatus, satellites, connect, disconnect, broadcastCommand } = useMasterSubscriber(roomId);
 
+    // Phase 4: Recordings Explorer States
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [tracks, setTracks] = useState<PracticeTrack[]>([]);
+    const [isLoadingTracks, setIsLoadingTracks] = useState(false);
+
+    // Phase 8: Backing Track (MR) Sync
+    const [isUploadingMR, setIsUploadingMR] = useState(false);
+    const [mrUrl, setMrUrl] = useState<string | null>(null);
+
     const isConnected = wsStatus === 'connected';
+
+    useEffect(() => {
+        if (isConnected && roomId) {
+            // Restore MR track if the page was refreshed
+            fetchLatestBackingTrack(roomId).then(url => {
+                if (url) setMrUrl(url);
+            });
+        }
+    }, [isConnected, roomId]);
+
+    useEffect(() => {
+        if (isDrawerOpen) {
+            loadTracks();
+        }
+    }, [isDrawerOpen]);
+
+    const loadTracks = async () => {
+        setIsLoadingTracks(true);
+        const fetched = await fetchRoomTracks(roomId);
+        setTracks(fetched);
+        setIsLoadingTracks(false);
+    };
 
     const handleConnect = (e: React.FormEvent) => {
         e.preventDefault();
@@ -55,8 +93,32 @@ export default function MasterPage() {
         );
     }
 
-    const satelliteArray = Object.values(satellites).sort((a, b) => a.part.localeCompare(b.part));
-    const [isRecordingMaster, setIsRecordingMaster] = useState(false);
+    const satelliteArray: SatelliteData[] = Object.values(satellites).sort((a, b) => a.part.localeCompare(b.part));
+
+    const handleMRUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            setIsUploadingMR(true);
+            const url = await uploadBackingTrack(file, roomId);
+            if (url) {
+                setMrUrl(url);
+                // Broadcast the URL to all connected satellites so they can preload it
+                broadcastCommand('PRELOAD_MR', url);
+                alert('MR 반주 전송이 완료되었습니다. 단원들의 기기에 버퍼링이 1~2초 소요될 수 있습니다.');
+            } else {
+                alert('MR 업로드에 실패했습니다.');
+            }
+        } catch (err) {
+            console.error("MR Upload failed:", err);
+            alert('MR 업로드 중 오류가 발생했습니다.');
+        } finally {
+            setIsUploadingMR(false);
+            // Reset input so the same file can be uploaded again if needed
+            e.target.value = '';
+        }
+    };
 
     const handleToggleRecord = () => {
         if (isRecordingMaster) {
@@ -70,120 +132,34 @@ export default function MasterPage() {
 
     return (
         <main className="min-h-[100dvh] bg-slate-950 text-slate-100 flex flex-col pt-safe-top pb-safe-bottom">
-            {/* Header */}
-            <header className="px-6 py-4 flex items-center justify-between border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-10 transition-colors duration-500">
-                <div className="flex items-center gap-4">
-                    <div className={`flex items-center gap-2 font-bold px-3 py-1.5 rounded-lg transition-colors duration-500 ${isRecordingMaster ? 'bg-red-500/20 text-red-500' : 'bg-indigo-500/10 text-indigo-400'}`}>
-                        <SignalHigh size={18} className="animate-pulse" />
-                        ROOM {roomId} {isRecordingMaster && "• REC"}
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-400 text-sm font-medium">
-                        <Users size={16} />
-                        {satelliteArray.length}개의 위성 연결됨
-                    </div>
-                </div>
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={handleToggleRecord}
-                        disabled={satelliteArray.length === 0}
-                        className={`flex items-center gap-2 px-6 py-2 text-sm font-bold rounded-xl transition-all disabled:opacity-50 ${isRecordingMaster ? 'bg-red-600 hover:bg-red-500 text-white animate-pulse' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white'}`}
-                    >
-                        <div className={`w-3 h-3 rounded-full ${isRecordingMaster ? 'bg-white' : 'bg-red-500'}`} />
-                        {isRecordingMaster ? '녹음 종료' : '전체 위성 동시 녹음'}
-                    </button>
-                    <button
-                        onClick={disconnect}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-sm font-bold rounded-xl transition-colors"
-                    >
-                        <LogOut size={16} />
-                        방 종료
-                    </button>
-                </div>
-            </header>
+            <MasterHeader
+                roomId={roomId}
+                satelliteCount={satelliteArray.length}
+                isRecordingMaster={isRecordingMaster}
+                isUploadingMR={isUploadingMR}
+                mrUrl={mrUrl}
+                onToggleRecord={handleToggleRecord}
+                onMRUpload={handleMRUpload}
+                onOpenDrawer={() => setIsDrawerOpen(true)}
+                onDisconnect={disconnect}
+            />
 
-            {/* Dynamic Grid */}
-            <div className="flex-1 p-6 overflow-y-auto">
-                {satelliteArray.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-4">
-                        <Activity size={48} className="opacity-20" />
-                        <p className="text-lg font-medium">단원들의 연결을 기다리고 있습니다...</p>
-                        <p className="text-sm">단원들은 위성 앱에서 Room {roomId}를 입력해야 합니다.</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr">
-                        {satelliteArray.map((sat) => {
-                            const p = sat.pitch;
-                            const isStable = p ? Math.abs(p.cents) <= 20 : false;
-
-                            // Dynamic color based on cents deviation
-                            let barColor = 'bg-slate-700';
-                            if (p) {
-                                if (isStable) barColor = 'bg-green-500';
-                                else if (p.cents > 0) barColor = 'bg-rose-500'; // Sharp
-                                else barColor = 'bg-blue-500'; // Flat
-                            }
-
-                            return (
-                                <div key={sat.part} className={`bg-slate-900 border ${sat.connected ? 'border-indigo-500/30' : 'border-slate-800 opacity-60'} rounded-3xl p-6 flex flex-col relative overflow-hidden transition-all duration-300 shadow-none`}>
-                                    <div className="flex justify-between items-start mb-6">
-                                        <h2 className="text-2xl font-black text-white">{sat.part}</h2>
-                                        {p ? (
-                                            <span className={`text-xs font-bold px-2 py-1 rounded w-16 text-center ${isStable ? 'bg-green-500/20 text-green-400' : 'bg-slate-800 text-slate-400'}`}>
-                                                {isStable ? 'STABLE' : 'ADJUST'}
-                                            </span>
-                                        ) : (
-                                            <span className="text-[10px] font-bold px-2 py-1 rounded bg-slate-800 text-slate-500">
-                                                {sat.connected ? 'LISTENING' : 'WAITING'}
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <div className="flex-1 flex flex-col items-center justify-center mb-6">
-                                        {p ? (
-                                            <>
-                                                <div className="text-[5rem] leading-none font-black tracking-tighter tabular-nums flex items-end">
-                                                    {p.note}
-                                                    <span className="text-2xl font-medium text-slate-500 mb-4 ml-1">
-                                                        {p.cents > 0 ? '+' : ''}{p.cents}
-                                                    </span>
-                                                </div>
-                                                <div className="text-slate-400 font-mono mt-2">
-                                                    {p.frequency.toFixed(1)} Hz
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <div className="text-slate-500 font-medium flex flex-col items-center gap-2">
-                                                <Activity size={24} className={sat.connected ? 'animate-pulse text-indigo-400/50' : 'opacity-20'} />
-                                                {sat.connected ? '수음 중...' : '신호 대기 중'}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Visual Pitch Bar */}
-                                    <div className={`h-2 w-full rounded-full overflow-hidden relative transition-colors duration-500 ${sat.connected ? 'bg-slate-800' : 'bg-slate-800/30'}`}>
-                                        <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-slate-600 z-10" />
-                                        {p && (
-                                            <div
-                                                className={`h-full transition-all duration-100 ease-linear ${barColor}`}
-                                                style={{
-                                                    width: '50%',
-                                                    transform: `translateX(${p.cents > 0 ? 100 : 0}%) scaleX(${Math.abs(p.cents) / 50})`,
-                                                    transformOrigin: p.cents > 0 ? 'left' : 'right'
-                                                }}
-                                            />
-                                        )}
-                                    </div>
-                                    <div className="flex justify-between text-[10px] text-slate-500 font-bold mt-2 opacity-50">
-                                        <span>FLAT</span>
-                                        <span>PERFECT</span>
-                                        <span>SHARP</span>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
+            <div className="flex-1 p-6 overflow-y-auto w-full">
+                <SatelliteGrid
+                    roomId={roomId}
+                    satellites={satelliteArray}
+                />
             </div>
+
+            <RecordingsDrawer
+                roomId={roomId}
+                isOpen={isDrawerOpen}
+                onClose={() => setIsDrawerOpen(false)}
+                mrUrl={mrUrl}
+                tracks={tracks}
+                isLoadingTracks={isLoadingTracks}
+                onLoadTracks={loadTracks}
+            />
         </main>
     );
 }

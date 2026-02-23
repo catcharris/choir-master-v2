@@ -6,7 +6,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 export function useSatelliteStreamer(
     roomId: string,
     partName: string,
-    onCommandReceived?: (action: 'START_RECORD' | 'STOP_RECORD') => void
+    onCommandReceived?: (action: 'START_RECORD' | 'STOP_RECORD' | 'PRELOAD_MR', url?: string) => void
 ) {
     const [status, setStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
     const channelRef = useRef<RealtimeChannel | null>(null);
@@ -36,7 +36,7 @@ export function useSatelliteStreamer(
             .on('broadcast', { event: 'master_command' }, ({ payload }) => {
                 if (commandCallbackRef.current && payload?.action) {
                     console.log("Received Master Command:", payload.action);
-                    commandCallbackRef.current(payload.action);
+                    commandCallbackRef.current(payload.action, payload.url);
                 }
             })
             .subscribe((status, err) => {
