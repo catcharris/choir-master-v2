@@ -62,9 +62,9 @@ export function autoCorrelate(buffer: Float32Array, sampleRate: number, mode: 'v
     rms = Math.sqrt(rms / SIZE);
 
     // RMS Volume Threshold (Noise Gate / Proximity Bubble)
-    // 0.03 represents conversational volume at ~30cm for isolation (Vocal).
+    // 0.01 allows comfortable reading distance at ~60cm for isolation (Vocal).
     // 0.005 allows picking up a piano across the rehearsal room (Piano).
-    const rmsThreshold = mode === 'piano' ? 0.005 : 0.03;
+    const rmsThreshold = mode === 'piano' ? 0.005 : 0.01;
     if (rms < rmsThreshold) {
         return null;
     }

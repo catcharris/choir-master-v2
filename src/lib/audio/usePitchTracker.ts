@@ -39,7 +39,7 @@ export function usePitchTracker(a4: number = 440, onPitchUpdate?: (pitch: PitchD
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
                     echoCancellation: false,
-                    autoGainControl: false,
+                    autoGainControl: true, // Enabled to allow 60cm distance capture
                     noiseSuppression: false,
                     channelCount: 1
                 }
@@ -56,7 +56,13 @@ export function usePitchTracker(a4: number = 440, onPitchUpdate?: (pitch: PitchD
             analyserRef.current = analyser;
 
             const source = audioCtx.createMediaStreamSource(stream);
-            source.connect(analyser);
+
+            // [FIX] Safari/iOS ignores autoGainControl: true. We must force-amplify the mic manually.
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.value = 3.0; // 300% boost for 60cm distance capture
+
+            source.connect(gainNode);
+            gainNode.connect(analyser);
 
             setListenMode(mode);
             setError(null);

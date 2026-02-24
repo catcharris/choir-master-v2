@@ -99,7 +99,7 @@ export default function Tuner() {
                             <Activity className="text-indigo-400 w-12 h-12 mb-2 animate-bounce" />
                             <span className="text-indigo-300 font-medium tracking-widest text-sm text-center">
                                 소리를 내주세요<br />
-                                <span className="text-xs text-indigo-400/70 block mt-1">(단원의 소리만 수음되도록 20cm 내 유지)</span>
+                                <span className="text-xs text-indigo-400/70 block mt-1">(단원의 소리만 수음되도록 60cm 내 유지)</span>
                             </span>
                         </>
                     ) : (
@@ -290,10 +290,10 @@ export default function Tuner() {
                                 <section>
                                     <h3 className="font-bold text-indigo-300 text-base mb-2 flex items-center gap-2">
                                         <span className="bg-indigo-500/20 text-indigo-400 w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span>
-                                        30cm 소음 방어막 (RMS Gate)
+                                        60cm 확장형 수음 (RMS Gate)
                                     </h3>
                                     <p className="leading-relaxed border-l-2 border-slate-700 pl-3">
-                                        일반 튜너는 옆 사람의 소리까지 섞여서 고장납니다. 이 튜너는 물리적인 소리 에너지(RMS)를 계산하여 <strong>"스마트폰 20~30cm 앞의 목소리"</strong>만 수음하고, 거리가 조금이라도 먼 주변 단원들의 소리는 연산 전에 수학적으로 완전히 차단합니다.
+                                        일반 튜너는 백색소음까지 섞여서 고장납니다. 이 튜너는 물리적인 소리 에너지(RMS) 기준값을 조절하여 <strong>"스마트폰 60cm 내외의 목소리"</strong>를 악보를 보며 편안하게 수음하면서도, 거리가 너무 먼 주변 단원들의 소리는 연산 전에 수학적으로 완전히 차단합니다.
                                     </p>
                                 </section>
 
