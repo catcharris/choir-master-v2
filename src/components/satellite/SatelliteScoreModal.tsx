@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileImage, Presentation, Link as LinkIcon } from 'lucide-react';
+import { FileImage, Presentation, Link as LinkIcon, X } from 'lucide-react';
 
 interface SatelliteScoreModalProps {
     roomId: string;
@@ -66,8 +66,8 @@ export function SatelliteScoreModal({
                                 key={url}
                                 src={url}
                                 alt={`Score Page ${idx + 1}`}
-                                className={`absolute top-0 left-0 w-full h-full object-contain pointer-events-none transition-opacity duration-75 ${idx === localPage ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
-                                loading={idx <= localPage + 3 ? "eager" : "lazy"}
+                                className={`absolute top-0 left-0 w-full h-full object-contain pointer-events-none ${idx === localPage ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+                                loading="eager"
                             />
                         ))}
 
@@ -89,12 +89,13 @@ export function SatelliteScoreModal({
                 )}
             </div>
 
-            {/* Float Close Button */}
+            {/* Minimal Close Button in Top Right */}
             <button
                 onClick={onClose}
-                className="absolute bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 bg-black/40 hover:bg-black/80 text-white font-bold rounded-2xl backdrop-blur-md border border-white/10 transition-colors shadow-2xl active:scale-95 z-20"
+                className="absolute top-4 right-4 sm:top-6 sm:right-6 p-3 bg-black/40 hover:bg-black/80 text-white/70 hover:text-white rounded-full backdrop-blur-md border border-white/10 transition-colors shadow-2xl z-20 active:scale-95"
+                title="튜너로 돌아가기"
             >
-                악보 창 닫고 튜너 보기
+                <X size={24} />
             </button>
         </div>
     );

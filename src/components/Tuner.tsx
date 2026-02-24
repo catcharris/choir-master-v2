@@ -112,6 +112,35 @@ export default function Tuner() {
                                 <span className="text-4xl opacity-50 ml-1">{pitch.octave}</span>
                             </div>
 
+                            {/* Dynamics Display */}
+                            <div
+                                key={
+                                    pitch.rmsVolume < 0.005 ? 'pp' :
+                                        pitch.rmsVolume < 0.01 ? 'p' :
+                                            pitch.rmsVolume < 0.02 ? 'mp' :
+                                                pitch.rmsVolume < 0.05 ? 'mf' :
+                                                    pitch.rmsVolume < 0.12 ? 'f' :
+                                                        pitch.rmsVolume < 0.25 ? 'ff' : 'fff'
+                                }
+                                className={`font-serif italic text-3xl mb-2 pr-2 ${pitch.rmsVolume < 0.005 ? 'text-slate-500' :
+                                    pitch.rmsVolume < 0.01 ? 'text-indigo-300' :
+                                        pitch.rmsVolume < 0.02 ? 'text-indigo-400' :
+                                            pitch.rmsVolume < 0.05 ? 'text-emerald-400' :
+                                                pitch.rmsVolume < 0.12 ? 'text-amber-400' :
+                                                    pitch.rmsVolume < 0.25 ? 'text-orange-500' :
+                                                        'text-red-500 font-extrabold'
+                                    }`}
+                            >
+                                {
+                                    pitch.rmsVolume < 0.005 ? 'pp' :
+                                        pitch.rmsVolume < 0.01 ? 'p' :
+                                            pitch.rmsVolume < 0.02 ? 'mp' :
+                                                pitch.rmsVolume < 0.05 ? 'mf' :
+                                                    pitch.rmsVolume < 0.12 ? 'f' :
+                                                        pitch.rmsVolume < 0.25 ? 'ff' : 'fff'
+                                }
+                            </div>
+
                             <div className="text-slate-500 font-mono text-sm mb-4 bg-slate-800/50 px-3 py-1 rounded-full">
                                 {Math.round(pitch.frequency)} Hz | {Math.round(pitch.cents)} cents
                             </div>

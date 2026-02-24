@@ -31,6 +31,9 @@ export default function SatellitePage() {
     // Phase 9: Solo "Homework" Recording Mode
     const [isSoloRecording, setIsSoloRecording] = useState(false);
 
+    // Phase 10: Studio Mode WAV Recording
+    const [isStudioMode, setIsStudioMode] = useState(false);
+
     // --- Media Recorder setup for Phase 3 ---
     // The trick here is that we define our command handler BEFORE we pass it into the streamer hook,
     // but the streamer hook is what actually drives the AudioEngine via broadcastPitch.
@@ -39,7 +42,7 @@ export default function SatellitePage() {
         listenMode, startListening, stopListening, pitch, error,
         isRecording, startRecording, stopRecording, getRecordedBlob,
         preloadBackingTrack, playBackingTrack, stopBackingTrack
-    } = useAudioEngine(440, (p) => broadcastPitchRef.current(p));
+    } = useAudioEngine(440, (p) => broadcastPitchRef.current(p), isStudioMode);
 
     // We use a ref to bypass react cyclic dependency issues when passing broadcastPitch downwards
     const broadcastPitchRef = useRef<(p: PitchData | null) => void>(() => { });
@@ -106,6 +109,15 @@ export default function SatellitePage() {
             if (payload?.page !== undefined) {
                 setCurrentPage(payload.page);
                 setIsScoreOpen(true);
+            }
+        } else if (action === 'SET_STUDIO_MODE') {
+            if (payload?.enabled !== undefined) {
+                setIsStudioMode(payload.enabled);
+                if (payload.enabled) {
+                    toast.success("스튜디오 모드(WAV)가 켜졌습니다.\n고음질 무손실 녹음을 준비합니다.", { duration: 4000 });
+                } else {
+                    toast("스튜디오 모드가 꺼졌습니다.", { icon: "ℹ️" });
+                }
             }
         }
     }, [startRecording, stopRecording, getRecordedBlob, roomId, partName, preloadBackingTrack, playBackingTrack, stopBackingTrack, isMrReady, isSoloRecording]);
@@ -183,7 +195,7 @@ export default function SatellitePage() {
     }
 
     return (
-        <main className="h-[100dvh] w-full fixed inset-0 overflow-hidden bg-slate-950 text-slate-100 flex flex-col items-center p-6 sm:p-8">
+        <main className="no-swipe-back h-[100dvh] w-full fixed inset-0 overflow-hidden bg-slate-950 text-slate-100 flex flex-col items-center p-6 sm:p-8">
             {/* Cinematic Background Glows */}
             <div className="absolute top-0 right-0 w-[120vw] max-w-xl h-80 bg-emerald-600/10 blur-[100px] rounded-[100%] pointer-events-none -translate-y-1/2 translate-x-1/4" />
             <div className="absolute bottom-0 left-0 w-[120vw] max-w-xl h-80 bg-indigo-600/15 blur-[100px] rounded-[100%] pointer-events-none translate-y-1/2 -translate-x-1/4" />
@@ -193,7 +205,7 @@ export default function SatellitePage() {
 
                 {/* Header (Status & Room Info) */}
                 <div className={`flex-shrink-0 flex flex-col items-center pb-6 min-h-[140px] transition-all duration-500 ${maestroStream ? 'pt-64 sm:pt-72' : 'pt-2'}`}>
-                    <div className={`px-5 py-2.5 rounded-2xl flex items-center gap-2.5 text-sm font-bold shadow-lg shadow-black/20 border transition-colors duration-500 ${isRecording ? 'bg-red-500/15 text-red-400 border-red-500/30 animate-pulse' : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'}`}>
+                    <div key={isRecording ? 'rec' : 'idle'} className={`px-5 py-2.5 rounded-2xl flex items-center gap-2.5 text-sm font-bold shadow-lg shadow-black/20 border ${isRecording ? 'bg-red-500/15 text-red-400 border-red-500/30 animate-pulse' : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'}`}>
                         {isRecording ? <Mic size={18} className="animate-bounce" /> : <RadioReceiver size={18} />}
                         {isRecording ? '마스터 동기화 녹음 중' : '데이터 스트리밍 대기 중'}
                     </div>

@@ -69,26 +69,30 @@ export function MasterScoreModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm">
-            {/* Top Bar Floating UI */}
-            <div className="absolute top-6 left-6 z-20">
+            {/* Unified Top Navigation Header */}
+            <div className="absolute top-0 left-0 w-full p-4 sm:p-6 z-20 bg-gradient-to-b from-black/80 to-transparent flex items-start justify-between pointer-events-none">
+                {/* Left: Close Button */}
                 <button
                     onClick={onClose}
-                    className="flex items-center gap-2 px-5 py-3 bg-red-500/20 hover:bg-red-500/40 border border-red-500/50 text-red-200 rounded-2xl backdrop-blur-md shadow-2xl transition-all active:scale-95"
+                    className="pointer-events-auto flex items-center gap-2 pl-2 pr-4 py-2 bg-black/40 hover:bg-black/80 border border-white/10 text-white/80 hover:text-white rounded-full backdrop-blur-md shadow-2xl transition-all active:scale-95 group"
                 >
-                    <X size={20} />
-                    <span className="font-bold">악보 닫기 (메인 뷰)</span>
+                    <div className="p-1 bg-white/10 rounded-full group-hover:bg-red-500/20 group-hover:text-red-400 transition-colors">
+                        <X size={18} />
+                    </div>
+                    <span className="font-bold text-sm">악보 닫기</span>
                 </button>
-            </div>
 
-            <div className="absolute top-6 right-6 flex flex-col items-end gap-2 z-20 pointer-events-none">
-                <div className="bg-black/60 backdrop-blur-md border border-white/20 text-emerald-400 px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3">
-                    <span className="font-black text-2xl tracking-wider">
-                        {scoreUrls.length === 0 ? "대기 중" : `${currentIndex + 1} / ${scoreUrls.length}`}
-                    </span>
-                    <Presentation size={24} className="animate-pulse opacity-80" />
-                </div>
-                <div className="text-white/50 text-xs font-bold bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm border border-white/10">
-                    화면 좌/우 터치로 넘기기
+                {/* Right: Page Indicator & Instructions */}
+                <div className="flex flex-col items-end gap-2 text-right">
+                    <div className="bg-black/60 backdrop-blur-md border border-white/10 px-5 py-2 rounded-full shadow-2xl flex items-center gap-3">
+                        <span className="font-black text-xl tracking-wider text-emerald-400">
+                            {scoreUrls.length === 0 ? "대기 중" : `${currentIndex + 1} / ${scoreUrls.length}`}
+                        </span>
+                        <Presentation size={20} className="text-emerald-400/80 animate-pulse" />
+                    </div>
+                    <div className="hidden sm:block text-white/40 text-xs font-bold bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm border border-white/5">
+                        화면 좌/우측을 터치하여 페이지 이동
+                    </div>
                 </div>
             </div>
 
@@ -103,8 +107,8 @@ export function MasterScoreModal({
                                 key={url}
                                 src={url}
                                 alt={`Score Page ${idx + 1}`}
-                                className={`absolute top-0 left-0 w-full h-full object-contain pointer-events-none transition-opacity duration-75 ${idx === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
-                                loading={idx <= currentIndex + 3 ? "eager" : "lazy"}
+                                className={`absolute top-0 left-0 w-full h-full object-contain pointer-events-none ${idx === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+                                loading="eager"
                             />
                         ))}
 

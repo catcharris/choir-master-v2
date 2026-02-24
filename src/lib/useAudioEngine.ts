@@ -9,7 +9,7 @@ export type ListenMode = 'idle' | 'vocal' | 'piano';
  * Facade hook that combines pitch tracking, vocal recording, and backing track playback.
  * It delegates the actual work to single-responsibility hooks inside the 'audio' folder.
  */
-export function useAudioEngine(a4: number = 440, onPitchUpdate?: (pitch: PitchData | null) => void) {
+export function useAudioEngine(a4: number = 440, onPitchUpdate?: (pitch: PitchData | null) => void, isStudioMode: boolean = false) {
     const {
         listenMode,
         isListening,
@@ -19,16 +19,16 @@ export function useAudioEngine(a4: number = 440, onPitchUpdate?: (pitch: PitchDa
         pitch,
         error: pitchError,
         audioContextRef,
-        streamRef
+        streamRef,
+        processedStreamRef
     } = usePitchTracker(a4, onPitchUpdate);
-
     const {
         isRecording,
         startRecording,
         stopRecording,
         getRecordedBlob,
         recordError
-    } = useVocalRecorder(streamRef);
+    } = useVocalRecorder(processedStreamRef, isStudioMode); // Processed WebAudio stream w/ Gain + Comp
 
     const {
         preloadBackingTrack,

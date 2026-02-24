@@ -12,6 +12,7 @@ export async function uploadAudioBlob(blob: Blob, roomId: string, partName: stri
         let extension = 'webm';
         if (actualType.includes('mp4')) extension = 'mp4';
         else if (actualType.includes('ogg')) extension = 'ogg';
+        else if (actualType.includes('wav')) extension = 'wav';
 
         const b64EncodeUnicode = (str: string) => btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode(parseInt(p1, 16))));
 

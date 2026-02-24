@@ -10,6 +10,7 @@ export interface PitchData {
     note: string;
     octave: number;
     cents: number; // Deviation from the perfect note (-50 to +50)
+    rmsVolume: number; // RMS energy of the signal
 }
 
 /**
@@ -22,7 +23,7 @@ export function freqToMidi(freq: number, a4: number = 440): number {
 /**
  * Converts a frequency in Hz to a PitchData object containing the note string and cents deviation.
  */
-export function getPitchData(frequency: number, a4: number = 440): PitchData | null {
+export function getPitchData(frequency: number, rmsVolume: number, a4: number = 440): PitchData | null {
     if (frequency <= 0) return null;
 
     const midi = freqToMidi(frequency, a4);
@@ -38,7 +39,8 @@ export function getPitchData(frequency: number, a4: number = 440): PitchData | n
         frequency,
         note: NOTE_STRINGS[noteIndex],
         octave,
-        cents
+        cents,
+        rmsVolume
     };
 }
 
@@ -49,9 +51,9 @@ export function getPitchData(frequency: number, a4: number = 440): PitchData | n
  * 
  * @param buffer Float32Array containing time-domain PCM audio data (from getFloatTimeDomainData)
  * @param sampleRate The sample rate of the AudioContext
- * @returns The detected pitch in Hz, or null
+ * @returns The detected pitch in Hz and rms volume, or null
  */
-export function autoCorrelate(buffer: Float32Array, sampleRate: number, mode: 'vocal' | 'piano' = 'vocal'): number | null {
+export function autoCorrelate(buffer: Float32Array, sampleRate: number, mode: 'vocal' | 'piano' = 'vocal'): { frequency: number, rms: number } | null {
     const SIZE = buffer.length;
     let rms = 0;
 
@@ -62,9 +64,9 @@ export function autoCorrelate(buffer: Float32Array, sampleRate: number, mode: 'v
     rms = Math.sqrt(rms / SIZE);
 
     // RMS Volume Threshold (Noise Gate / Proximity Bubble)
-    // 0.01 allows comfortable reading distance at ~60cm for isolation (Vocal).
-    // 0.005 allows picking up a piano across the rehearsal room (Piano).
-    const rmsThreshold = mode === 'piano' ? 0.005 : 0.01;
+    // 0.002 allows comfortable reading distance at ~60cm even for soft (piano) choral dynamics.
+    // 0.001 allows picking up a piano across the rehearsal room (Piano mode).
+    const rmsThreshold = mode === 'piano' ? 0.001 : 0.002;
     if (rms < rmsThreshold) {
         return null;
     }
@@ -138,5 +140,5 @@ export function autoCorrelate(buffer: Float32Array, sampleRate: number, mode: 'v
     // Vocal + Piano constraint (70Hz to 1200Hz)
     if (frequency < 70 || frequency > 1200) return null;
 
-    return frequency;
+    return { frequency, rms };
 }

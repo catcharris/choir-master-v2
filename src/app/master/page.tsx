@@ -13,6 +13,7 @@ import { MasterHeader } from '@/components/master/MasterHeader';
 import { SatelliteGrid, SatelliteData } from '@/components/master/SatelliteGrid';
 import { RecordingsDrawer } from '@/components/master/RecordingsDrawer';
 import { MasterScoreModal } from '@/components/master/MasterScoreModal';
+import { PracticeListBookmark } from '@/components/master/PracticeListBookmark';
 
 export default function MasterPage() {
     const [roomId, setRoomId] = useState('');
@@ -23,6 +24,10 @@ export default function MasterPage() {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [tracks, setTracks] = useState<PracticeTrack[]>([]);
     const [isLoadingTracks, setIsLoadingTracks] = useState(false);
+
+    // Phase 11: 3-Tier Mode (Conductor vs Manager)
+    const [viewMode, setViewMode] = useState<'conductor' | 'manager'>('conductor');
+    const [isStudioMode, setIsStudioMode] = useState(false);
 
     // Phase 8: Backing Track (MR) Sync
     const [isUploadingMR, setIsUploadingMR] = useState(false);
@@ -178,6 +183,17 @@ export default function MasterPage() {
         }
     };
 
+    const handleToggleStudioMode = () => {
+        const nextState = !isStudioMode;
+        setIsStudioMode(nextState);
+        broadcastCommand('SET_STUDIO_MODE', { enabled: nextState });
+        if (nextState) {
+            toast.success('스튜디오 모드 활성화됨.\n위성들의 녹음이 WAV 무손실 포맷으로 강제됩니다.', { duration: 4000 });
+        } else {
+            toast('스튜디오 모드 해제됨.\n일반 압축 포맷(Opus)으로 복귀합니다.', { icon: 'ℹ️' });
+        }
+    };
+
     const handleToggleCam = async () => {
         if (isCamActive) {
             stopCamera();
@@ -210,6 +226,10 @@ export default function MasterPage() {
                 hasScore={scoreUrls.length > 0}
                 onOpenScore={() => setIsScoreModalOpen(true)}
                 onDisconnect={disconnect}
+                viewMode={viewMode}
+                onSwitchMode={setViewMode}
+                isStudioMode={isStudioMode}
+                onToggleStudioMode={handleToggleStudioMode}
             />
 
             <div className="flex-1 p-6 overflow-y-auto w-full">
@@ -252,6 +272,9 @@ export default function MasterPage() {
                     <div className="absolute top-2 right-2 bg-red-600 rounded-full w-2 h-2 animate-pulse" />
                 </div>
             )}
+
+            {/* Floating Bookmark for Today's Songs */}
+            <PracticeListBookmark />
         </main>
     );
 }

@@ -11,6 +11,7 @@ export function usePitchTracker(a4: number = 440, onPitchUpdate?: (pitch: PitchD
     const audioContextRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
+    const processedStreamRef = useRef<MediaStream | null>(null); // State for the amplified recording stream
     const requestRef = useRef<number | null>(null);
     const a4Ref = useRef(a4);
     const modeRef = useRef<ListenMode>('idle');
@@ -61,8 +62,24 @@ export function usePitchTracker(a4: number = 440, onPitchUpdate?: (pitch: PitchD
             const gainNode = audioCtx.createGain();
             gainNode.gain.value = 3.0; // 300% boost for 60cm distance capture
 
+            // Compressor to prevent distortion on fff (loud singing)
+            const compressor = audioCtx.createDynamicsCompressor();
+            compressor.threshold.value = -24; // start compressing at -24dB
+            compressor.knee.value = 30; // smooth compression onset
+            compressor.ratio.value = 12; // hard squeeze (12:1) when above threshold
+            compressor.attack.value = 0.003; // clamp loud noises almost instantly
+            compressor.release.value = 0.25; // release smoothly
+
+            const destinationNode = audioCtx.createMediaStreamDestination();
+            destinationNode.channelCount = 1; // Force true Mono output instead of Stereo with left-only signal
+
+            // Clean, straightforward routing to avoid Safari WebAudio crashes
             source.connect(gainNode);
-            gainNode.connect(analyser);
+            gainNode.connect(compressor);
+            compressor.connect(analyser); // Analyser gets compressed, pitch-stable signal
+            compressor.connect(destinationNode); // Recorder gets clean, compressed audio
+
+            processedStreamRef.current = destinationNode.stream;
 
             setListenMode(mode);
             setError(null);
@@ -87,6 +104,11 @@ export function usePitchTracker(a4: number = 440, onPitchUpdate?: (pitch: PitchD
             streamRef.current = null;
         }
 
+        if (processedStreamRef.current) {
+            processedStreamRef.current.getTracks().forEach(track => track.stop());
+            processedStreamRef.current = null;
+        }
+
         if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
             audioContextRef.current.close();
             audioContextRef.current = null;
@@ -107,9 +129,11 @@ export function usePitchTracker(a4: number = 440, onPitchUpdate?: (pitch: PitchD
         const buffer = new Float32Array(analyserRef.current.fftSize);
         analyserRef.current.getFloatTimeDomainData(buffer);
 
-        const frequency = autoCorrelate(buffer, audioContextRef.current.sampleRate, modeRef.current as 'vocal' | 'piano');
+        const result = autoCorrelate(buffer, audioContextRef.current.sampleRate, modeRef.current as 'vocal' | 'piano');
 
-        if (frequency) {
+        if (result && result.frequency) {
+            const { frequency, rms } = result;
+
             if (recentFrequenciesRef.current.length > 0) {
                 const lastFreq = recentFrequenciesRef.current[recentFrequenciesRef.current.length - 1];
                 const pitchJumpRatio = frequency / lastFreq;
@@ -128,7 +152,7 @@ export function usePitchTracker(a4: number = 440, onPitchUpdate?: (pitch: PitchD
                 const sum = recentFrequenciesRef.current.reduce((a, b) => a + b, 0);
                 const avgFreq = sum / recentFrequenciesRef.current.length;
 
-                const pitchData = getPitchData(avgFreq, a4Ref.current);
+                const pitchData = getPitchData(avgFreq, rms, a4Ref.current);
                 setPitch(pitchData);
                 if (onPitchUpdateRef.current) onPitchUpdateRef.current(pitchData);
                 lastUpdateTimeRef.current = now;
@@ -156,6 +180,7 @@ export function usePitchTracker(a4: number = 440, onPitchUpdate?: (pitch: PitchD
         pitch,
         error,
         audioContextRef,
-        streamRef
+        streamRef,
+        processedStreamRef
     };
 }

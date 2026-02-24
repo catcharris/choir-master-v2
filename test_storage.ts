@@ -15,13 +15,9 @@ async function testFetch() {
     const { data: rootData, error: rootErr } = await supabase.storage.from('practice_tracks').list();
     console.log("Root content:", rootData || rootErr);
 
-    if (rootData?.length) {
-        // e.g., if there's a folder like '9876'
-        const folderName = rootData[0].name;
-        console.log(`Fetching inside folder: ${folderName}`);
-        const { data: folderData, error: folderErr } = await supabase.storage.from('practice_tracks').list(folderName);
-        console.log(`Folder ${folderName} content:`, folderData || folderErr);
-    }
+    console.log(`Fetching inside folder: MTIzNA`);
+    const { data: folderData, error: folderErr } = await supabase.storage.from('practice_tracks').list('MTIzNA', { limit: 5, sortBy: { column: 'created_at', order: 'desc' } });
+    console.log(`Folder MTIzNA content:`, folderData?.map(f => ({ name: f.name, size: f.metadata.size, type: f.metadata.mimetype, created_at: f.created_at })) || folderErr);
 }
 
 testFetch();

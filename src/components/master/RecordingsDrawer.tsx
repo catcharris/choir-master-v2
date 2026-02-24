@@ -22,6 +22,26 @@ export function RecordingsDrawer({
     isLoadingTracks,
     onLoadTracks
 }: RecordingsDrawerProps) {
+    const groupedTakes = React.useMemo(() => {
+        const takes: { timestamp: number, tracks: PracticeTrack[] }[] = [];
+        tracks.forEach(t => {
+            const tsString = t.name.split('_')[1];
+            if (!tsString) return;
+            const ts = parseInt(tsString.split('.')[0]);
+
+            const existingGroup = takes.find(g => Math.abs(g.timestamp - ts) < 3000);
+            if (existingGroup) {
+                existingGroup.tracks.push(t);
+            } else {
+                takes.push({ timestamp: ts, tracks: [t] });
+            }
+        });
+
+        // Sort newest groups first
+        takes.sort((a, b) => b.timestamp - a.timestamp);
+        return takes;
+    }, [tracks]);
+
     if (!isOpen) return null;
 
     return (
@@ -57,36 +77,16 @@ export function RecordingsDrawer({
                             <p className="text-sm mt-2">위성 단원을 연결하고 녹음을 진행해주세요.</p>
                         </div>
                     ) : (
-                        (() => {
-                            // Group tracks by timestamp (within a 3 second window to account for broadcast jitter)
-                            const groupedTakes: { timestamp: number, tracks: PracticeTrack[] }[] = [];
-                            tracks.forEach(t => {
-                                const tsString = t.name.split('_')[1];
-                                if (!tsString) return;
-                                const ts = parseInt(tsString.split('.')[0]);
-
-                                const existingGroup = groupedTakes.find(g => Math.abs(g.timestamp - ts) < 3000);
-                                if (existingGroup) {
-                                    existingGroup.tracks.push(t);
-                                } else {
-                                    groupedTakes.push({ timestamp: ts, tracks: [t] });
-                                }
-                            });
-
-                            // Sort newest groups first
-                            groupedTakes.sort((a, b) => b.timestamp - a.timestamp);
-
-                            return groupedTakes.map(group => (
-                                <TakeMixer
-                                    key={group.timestamp}
-                                    roomId={roomId}
-                                    tracks={group.tracks}
-                                    timestamp={group.timestamp}
-                                    mrUrl={mrUrl}
-                                    onDeleteComplete={onLoadTracks}
-                                />
-                            ));
-                        })()
+                        groupedTakes.map(group => (
+                            <TakeMixer
+                                key={group.timestamp}
+                                roomId={roomId}
+                                tracks={group.tracks}
+                                timestamp={group.timestamp}
+                                mrUrl={mrUrl}
+                                onDeleteComplete={onLoadTracks}
+                            />
+                        ))
                     )}
                 </div>
             </div>
