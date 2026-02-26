@@ -116,9 +116,9 @@ export default function SatellitePage() {
             if (payload?.enabled !== undefined) {
                 setIsStudioMode(payload.enabled);
                 if (payload.enabled) {
-                    toast.success("스튜디오 모드(WAV)가 켜졌습니다.\n고음질 무손실 녹음을 준비합니다.", { duration: 4000 });
+                    toast.success("스튜디오 모드(WAV)가 켜졌습니다.\n고음질 무손실 녹음을 준비합니다.", { duration: 2000 });
                 } else {
-                    toast("스튜디오 모드가 꺼졌습니다.", { icon: "ℹ️" });
+                    toast("스튜디오 모드가 꺼졌습니다.", { icon: "ℹ️", duration: 2000 });
                 }
             }
         } else if (action === 'CLEAR_ROOM') {

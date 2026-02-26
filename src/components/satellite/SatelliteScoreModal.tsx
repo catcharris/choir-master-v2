@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FileImage, Presentation, Link as LinkIcon, X } from 'lucide-react';
+import { Toaster } from 'react-hot-toast';
 
 interface SatelliteScoreModalProps {
     roomId: string;
@@ -40,21 +41,29 @@ export function SatelliteScoreModal({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95 backdrop-blur-md">
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black backdrop-blur-md pb-safe">
+
+            {/* Custom Modal Toaster (Keeps toasts contained and styled for dark mode) */}
+            <div className="absolute inset-x-0 bottom-8 z-[110] flex justify-center pointer-events-none modal-toast-container">
+                <style>{`
+                    .modal-toast-container .go3958317564 { /* react-hot-toast class override */
+                        background: rgba(15, 23, 42, 0.95) !important;
+                        color: white !important;
+                        border: 1px solid rgba(255,255,255,0.1);
+                        backdrop-filter: blur(12px);
+                    }
+                `}</style>
+                <Toaster position="bottom-center" />
+            </div>
 
             {/* Top Indicator & Sync Button */}
-            {isSynced ? (
-                <div className="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-6 py-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-indigo-400 font-bold shadow-lg z-20 w-max max-w-full pointer-events-none">
-                    <Presentation size={18} className="animate-pulse flex-shrink-0" />
-                    <span className="text-sm">마스터 동기화 중 ({localPage + 1}/{scoreUrls.length})</span>
-                </div>
-            ) : (
+            {!isSynced && (
                 <button
                     onClick={() => setLocalPage(masterPage)}
-                    className="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-6 py-3 bg-rose-500/90 hover:bg-rose-600 border border-white/20 rounded-full text-white font-bold shadow-2xl z-20 w-max max-w-full transition-all active:scale-95 shadow-rose-500/40 animate-bounce"
+                    className="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-6 py-3 bg-rose-500/90 hover:bg-rose-600 border border-white/20 rounded-full text-white font-bold shadow-2xl z-[120] w-max max-w-[90vw] transition-all active:scale-95 shadow-rose-500/40 animate-bounce"
                 >
                     <LinkIcon size={18} className="flex-shrink-0" />
-                    <span className="text-sm">마스터 화면으로 복귀 (Page {masterPage + 1})</span>
+                    <span className="text-sm truncate">마스터 화면으로 복귀 (Page {masterPage + 1})</span>
                 </button>
             )}
 
