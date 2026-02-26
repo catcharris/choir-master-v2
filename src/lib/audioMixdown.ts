@@ -220,7 +220,10 @@ export async function mixdownTracks(
         // Each hardware device starts capturing at a different absolute time.
         // We delay each individual track inside the mixdown by its precise telemetry `offsetMs`
         // so it perfectly aligns against the MR which acts as absolute Timeline 0.0.
-        source.start(b.offsetSec);
+        // If the offset is negative, we start immediately (0) and skip the first N seconds of the buffer.
+        const startWhen = Math.max(0, b.offsetSec);
+        const bufferOffset = Math.max(0, -b.offsetSec);
+        source.start(startWhen, bufferOffset);
     }
 
     // 6. Render entire batch instantly

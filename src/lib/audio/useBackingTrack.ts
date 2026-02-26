@@ -6,8 +6,15 @@ export function useBackingTrack(audioContextRef: React.MutableRefObject<AudioCon
 
     const preloadBackingTrack = useCallback(async (url: string): Promise<{ success: boolean; error?: string }> => {
         if (!audioContextRef.current) {
-            console.warn("AudioContext not ready for MR preload. Call startListening first.");
-            return { success: false, error: "AudioContext 셋업 실패" };
+            console.log("AudioContext not ready for MR preload. Self-hydrating now...");
+            try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                audioContextRef.current = audioCtx;
+            } catch (e) {
+                console.warn("Failed to self-hydrate AudioContext:", e);
+                return { success: false, error: "AudioContext 셋업 실패" };
+            }
         }
         try {
             console.log("Fetching MR track for Web Audio playback:", url);

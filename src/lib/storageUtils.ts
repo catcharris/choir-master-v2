@@ -49,9 +49,9 @@ export async function fetchRoomTracks(roomId: string): Promise<PracticeTrack[]> 
                 .from('practice_tracks')
                 .getPublicUrl(path);
 
-            // Extract telemetry offset from the filename (e.g. Soprano_1708940001000_offset_1482.webm)
+            // Extract telemetry offset from the filename (e.g. Soprano_1708940001000_offset_1482.webm or -100)
             let parsedOffset = 1500; // Default backwards compatibility
-            const offsetMatch = file.name.match(/_offset_(\d+)\./);
+            const offsetMatch = file.name.match(/_offset_(-?\d+)\./);
             if (offsetMatch && offsetMatch[1]) {
                 parsedOffset = parseInt(offsetMatch[1], 10);
             }
