@@ -5,9 +5,12 @@ export function useVocalRecorder(streamRef: React.MutableRefObject<MediaStream |
     const [isRecording, setIsRecording] = useState(false);
     const [recordError, setRecordError] = useState<string | null>(null);
 
-    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-    const audioChunksRef = useRef<Blob[]>([]);
     const finalBlobRef = useRef<Blob | null>(null);
+
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
+    const mediaStreamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+    const pcmDataRef = useRef<Float32Array[]>([]);
 
     const startRecording = useCallback((onStart?: () => void) => {
         if (!streamRef.current) {
@@ -20,62 +23,78 @@ export function useVocalRecorder(streamRef: React.MutableRefObject<MediaStream |
             finalBlobRef.current = null;
             setRecordError(null);
 
-            // --- Unified Recording Pipeline ---
-            audioChunksRef.current = [];
-            let recorder: MediaRecorder | null = null;
-            let finalMimeType = '';
+            // --- True T=0 WAV (Uncompressed PCM) Recording Pipeline ---
+            // We use WebAudio API's ScriptProcessorNode to perfectly capture audio samples
+            // exactly as they flow out of the microphone buffer, bypassing the unpredictable
+            // encoder warmup delays of native MediaRecorder.
 
-            // Prioritize uncompressed/lossless formats for Studio Mode, otherwise Opus
-            const typesToTry = isStudioMode
-                ? ['audio/wav', 'audio/webm;codecs=pcm', 'audio/ogg;codecs=flac', 'audio/webm;codecs=opus', 'audio/mp4', '']
-                : ['audio/webm;codecs=opus', 'audio/mp4', ''];
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({
+                sampleRate: isStudioMode ? 48000 : 44100 // Slightly lower sample rate for normal mode to save space
+            });
+            audioContextRef.current = audioCtx;
 
-            for (const t of typesToTry) {
-                try {
-                    const options = t ? { mimeType: t } : undefined;
-                    recorder = new MediaRecorder(streamRef.current, options);
-                    finalMimeType = t;
-                    break;
-                } catch (e) {
-                    // Try next format
+            const source = audioCtx.createMediaStreamSource(streamRef.current);
+            mediaStreamSourceRef.current = source;
+
+            // 4096 buffer, 1 input channel, 1 output channel
+            const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+            scriptProcessorRef.current = processor;
+
+            pcmDataRef.current = [];
+
+            let isFirstFrame = true;
+
+            processor.onaudioprocess = (e) => {
+                if (isFirstFrame && onStart) {
+                    isFirstFrame = false;
+                    onStart(); // Trigger MR playback on the exact physical millisecond the mic yields data
                 }
-            }
-
-            if (!recorder) {
-                throw new Error("No supported recording format found.");
-            }
-
-            recorder.onstart = () => {
-                if (onStart) onStart();
+                const inputData = e.inputBuffer.getChannelData(0);
+                // Copy data because the buffer is reused
+                pcmDataRef.current.push(new Float32Array(inputData));
             };
 
-            recorder.ondataavailable = (e) => {
-                if (e.data.size > 0) {
-                    audioChunksRef.current.push(e.data);
-                }
-            };
+            // Connect to start processing (must connect destination for some browsers to trigger inaudioprocess)
+            source.connect(processor);
+            processor.connect(audioCtx.destination);
 
-            recorder.onstop = () => {
-                const audioBlob = new Blob(audioChunksRef.current, finalMimeType ? { type: finalMimeType } : undefined);
-                finalBlobRef.current = audioBlob;
-                setIsRecording(false);
-                console.log(`[${isStudioMode ? 'STUDIO' : 'NORMAL'}] Recording stopped. Final Blob size:`, audioBlob.size, "Type:", finalMimeType);
-            };
-
-            recorder.start(200); // 200ms chunks to prevent massive memory spikes at the end of long recordings
-            mediaRecorderRef.current = recorder;
             setIsRecording(true);
         } catch (err: any) {
-            console.error("Failed to start MediaRecorder:", err);
+            console.error("Failed to start WebAudio Recorder:", err);
             setRecordError(`녹음 시작 실패: ${err.message || "지원되지 않는 환경입니다."}`);
         }
     }, [streamRef, isStudioMode]);
 
     const stopRecording = useCallback(() => {
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-            mediaRecorderRef.current.stop();
+        if (audioContextRef.current && scriptProcessorRef.current && mediaStreamSourceRef.current) {
+            scriptProcessorRef.current.disconnect();
+            mediaStreamSourceRef.current.disconnect();
+
+            // Flatten PCM chunks
+            const totalLength = pcmDataRef.current.reduce((acc, chunk) => acc + chunk.length, 0);
+            const flatData = new Float32Array(totalLength);
+            let offset = 0;
+            for (let chunk of pcmDataRef.current) {
+                flatData.set(chunk, offset);
+                offset += chunk.length;
+            }
+
+            const sampleRate = audioContextRef.current.sampleRate;
+            // encodeWav outputs standard 16-bit PCM WAV which is universally supported
+            const wavBlob = encodeWav(flatData, sampleRate, 1);
+
+            finalBlobRef.current = wavBlob;
+            console.log(`[${isStudioMode ? 'STUDIO' : 'NORMAL'}] WAV Recording stopped. Final Blob size:`, wavBlob.size, "SampleRate:", sampleRate);
+
+            audioContextRef.current.close().catch(console.error);
+            audioContextRef.current = null;
+            scriptProcessorRef.current = null;
+            mediaStreamSourceRef.current = null;
+            pcmDataRef.current = [];
         }
-    }, []);
+        setIsRecording(false);
+    }, [isStudioMode]);
 
     const getRecordedBlob = useCallback(() => {
         return finalBlobRef.current;
