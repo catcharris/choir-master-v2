@@ -48,6 +48,7 @@ export default function RootLayout({
         {children}
         <Toaster
           position="bottom-center"
+          containerStyle={{ bottom: 'calc(env(safe-area-inset-bottom) + 36px)' }}
           toastOptions={{
             style: {
               background: '#1e293b', // slate-800

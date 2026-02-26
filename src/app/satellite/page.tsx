@@ -205,7 +205,6 @@ export default function SatellitePage() {
 
     return (
         <main className="no-swipe-back h-[100dvh] w-full fixed inset-0 overflow-hidden bg-slate-950 text-slate-100 flex flex-col items-center p-6 sm:p-8">
-            <Toaster position="top-center" toastOptions={{ duration: 1500 }} />
             {/* Cinematic Background Glows */}
             <div className="absolute top-0 right-0 w-[120vw] max-w-xl h-80 bg-emerald-600/10 blur-[100px] rounded-[100%] pointer-events-none -translate-y-1/2 translate-x-1/4" />
             <div className="absolute bottom-0 left-0 w-[120vw] max-w-xl h-80 bg-indigo-600/15 blur-[100px] rounded-[100%] pointer-events-none translate-y-1/2 -translate-x-1/4" />

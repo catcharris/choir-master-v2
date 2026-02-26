@@ -22,6 +22,7 @@ import { Presentation, LogOut, Trash2 } from 'lucide-react';
 export default function MasterPage() {
     const [roomId, setRoomId] = useState('');
     const [isRecordingMaster, setIsRecordingMaster] = useState(false);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
     const [masterPage, setMasterPage] = useState(0);
     const handleMasterCommand = useCallback((action: string, payload: any) => {
         if (action === 'SCORE_SYNC' && payload?.urls) {
@@ -142,6 +143,20 @@ export default function MasterPage() {
         if (!roomId.trim()) return;
         connect();
     };
+
+    // Phase 14-B: Master MR Playback Sync
+    // Ensure the MR plays locally on the Master device(s) when recording starts
+    useEffect(() => {
+        if (!audioRef.current) return;
+
+        if (isRecordingMaster && mrUrl) {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch(e => console.warn("Master MR playback failed (likely browser autoplay block):", e));
+        } else {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+    }, [isRecordingMaster, mrUrl]);
 
     // Phase 14: Late Joiner State Synchronization
     // If a choir member connects AFTER the master has uploaded a score, turned on Studio Mode,
@@ -330,6 +345,7 @@ export default function MasterPage() {
 
     return (
         <main className="min-h-[100dvh] bg-slate-950 text-slate-100 flex flex-col pt-safe-top pb-safe-bottom relative">
+            <audio ref={audioRef} src={mrUrl || undefined} preload="auto" className="hidden" />
             <MasterHeader
                 roomId={roomId}
                 satelliteCount={satelliteArray.length}
