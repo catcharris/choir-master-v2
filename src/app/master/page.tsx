@@ -6,7 +6,7 @@ import { LayoutGrid, Home } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useMaestroCamMaster } from '@/lib/webrtc/useMaestroCamMaster';
 import { fetchRoomTracks, PracticeTrack } from '@/lib/storageUtils';
-import { uploadBackingTrack, fetchLatestBackingTrack } from '@/lib/backingTrackUtils';
+import { uploadBackingTrack, fetchLatestBackingTrack, fetchAllRoomBackingTracks } from '@/lib/backingTrackUtils';
 import { uploadScoreImages, fetchLatestScores } from '@/lib/scoreUtils';
 import { detectChord } from '@/lib/chordDetector';
 import { clearRoomData } from '@/lib/clearRoomData';
@@ -76,6 +76,7 @@ export default function MasterPage() {
     // Phase 8: Backing Track (MR) Sync
     const [isUploadingMR, setIsUploadingMR] = useState(false);
     const [mrUrl, setMrUrl] = useState<string | null>(null);
+    const [mrHistory, setMrHistory] = useState<{ url: string, timestamp: number }[]>([]);
 
     // Phase 10: Score Sync Sync
     const [isUploadingScore, setIsUploadingScore] = useState(false);
@@ -144,17 +145,22 @@ export default function MasterPage() {
     const loadTracks = async (deletedNames?: string[]) => {
         if (deletedNames && deletedNames.length > 0) {
             setTracks(prev => prev.filter(t => !deletedNames.includes(t.name)));
-            // Delayed background fetch to allow Supabase to properly clear the deleted files
             setTimeout(async () => {
-                const fetched = await fetchRoomTracks(roomId);
-                setTracks(fetched);
+                const fetchedTracks = await fetchRoomTracks(roomId);
+                const fetchedMrs = await fetchAllRoomBackingTracks(roomId);
+                setTracks(fetchedTracks);
+                setMrHistory(fetchedMrs);
             }, 1500);
             return;
         }
 
         setIsLoadingTracks(true);
-        const fetched = await fetchRoomTracks(roomId);
-        setTracks(fetched);
+        const [fetchedTracks, fetchedMrs] = await Promise.all([
+            fetchRoomTracks(roomId),
+            fetchAllRoomBackingTracks(roomId)
+        ]);
+        setTracks(fetchedTracks);
+        setMrHistory(fetchedMrs);
         setIsLoadingTracks(false);
     };
 
@@ -434,7 +440,7 @@ export default function MasterPage() {
                 roomId={roomId}
                 isOpen={isDrawerOpen}
                 onClose={() => setIsDrawerOpen(false)}
-                mrUrl={mrUrl}
+                mrHistory={mrHistory}
                 tracks={tracks}
                 isLoadingTracks={isLoadingTracks}
                 onLoadTracks={loadTracks}

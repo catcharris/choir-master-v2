@@ -7,7 +7,7 @@ interface RecordingsDrawerProps {
     roomId: string;
     isOpen: boolean;
     onClose: () => void;
-    mrUrl: string | null;
+    mrHistory: { url: string, timestamp: number }[];
     tracks: PracticeTrack[];
     isLoadingTracks: boolean;
     onLoadTracks: (deletedNames?: string[]) => void;
@@ -17,7 +17,7 @@ export function RecordingsDrawer({
     roomId,
     isOpen,
     onClose,
-    mrUrl,
+    mrHistory,
     tracks,
     isLoadingTracks,
     onLoadTracks
@@ -77,16 +77,24 @@ export function RecordingsDrawer({
                             <p className="text-sm mt-2">위성 단원을 연결하고 녹음을 진행해주세요.</p>
                         </div>
                     ) : (
-                        groupedTakes.map(group => (
-                            <TakeMixer
-                                key={group.timestamp}
-                                roomId={roomId}
-                                tracks={group.tracks}
-                                timestamp={group.timestamp}
-                                mrUrl={mrUrl}
-                                onDeleteComplete={onLoadTracks}
-                            />
-                        ))
+                        groupedTakes.map(group => {
+                            // Find the chronologically correct MR:
+                            // The MR must have been uploaded *before* or *at* the time this vocal take was recorded.
+                            // Since mrHistory is sorted newest to oldest, we find the *first* one that is older than the take.
+                            const correctMr = mrHistory.find(mr => mr.timestamp <= group.timestamp);
+                            const resolvedMrUrl = correctMr ? correctMr.url : (mrHistory.length > 0 ? mrHistory[mrHistory.length - 1].url : null);
+
+                            return (
+                                <TakeMixer
+                                    key={group.timestamp}
+                                    roomId={roomId}
+                                    tracks={group.tracks}
+                                    timestamp={group.timestamp}
+                                    mrUrl={resolvedMrUrl}
+                                    onDeleteComplete={onLoadTracks}
+                                />
+                            );
+                        })
                     )}
                 </div>
             </div>

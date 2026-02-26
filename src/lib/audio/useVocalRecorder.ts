@@ -9,12 +9,6 @@ export function useVocalRecorder(streamRef: React.MutableRefObject<MediaStream |
     const audioChunksRef = useRef<Blob[]>([]);
     const finalBlobRef = useRef<Blob | null>(null);
 
-    // WAV Recording state
-    const audioContextRef = useRef<AudioContext | null>(null);
-    const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
-    const mediaStreamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-    const pcmDataRef = useRef<Float32Array[]>([]);
-
     const startRecording = useCallback((onStart?: () => void) => {
         if (!streamRef.current) {
             console.error("Cannot start recording: No active microphone stream.");
@@ -26,46 +20,16 @@ export function useVocalRecorder(streamRef: React.MutableRefObject<MediaStream |
             finalBlobRef.current = null;
             setRecordError(null);
 
-            if (isStudioMode) {
-                // --- WAV (Uncompressed PCM) Recording Pipeline ---
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 48000 });
-                audioContextRef.current = audioCtx;
-
-                const source = audioCtx.createMediaStreamSource(streamRef.current);
-                mediaStreamSourceRef.current = source;
-
-                // 4096 buffer, 1 input channel, 1 output channel
-                const processor = audioCtx.createScriptProcessor(4096, 1, 1);
-                scriptProcessorRef.current = processor;
-
-                pcmDataRef.current = [];
-                let hasStarted = false;
-
-                processor.onaudioprocess = (e) => {
-                    if (!hasStarted) {
-                        hasStarted = true;
-                        if (onStart) onStart();
-                    }
-                    const inputData = e.inputBuffer.getChannelData(0);
-                    // Copy data because the buffer is reused
-                    pcmDataRef.current.push(new Float32Array(inputData));
-                };
-
-                // Connect to start processing (must connect destination for some browsers to trigger inaudioprocess)
-                source.connect(processor);
-                processor.connect(audioCtx.destination);
-
-                setIsRecording(true);
-                return;
-            }
-
-            // --- Normal Mode (Opus Compressed MediaRecorder) Pipeline ---
+            // --- Unified Recording Pipeline ---
             audioChunksRef.current = [];
             let recorder: MediaRecorder | null = null;
             let finalMimeType = '';
 
-            const typesToTry = ['audio/webm;codecs=opus', 'audio/mp4', ''];
+            // Prioritize uncompressed/lossless formats for Studio Mode, otherwise Opus
+            const typesToTry = isStudioMode
+                ? ['audio/wav', 'audio/webm;codecs=pcm', 'audio/ogg;codecs=flac', 'audio/webm;codecs=opus', 'audio/mp4', '']
+                : ['audio/webm;codecs=opus', 'audio/mp4', ''];
+
             for (const t of typesToTry) {
                 try {
                     const options = t ? { mimeType: t } : undefined;
@@ -95,10 +59,10 @@ export function useVocalRecorder(streamRef: React.MutableRefObject<MediaStream |
                 const audioBlob = new Blob(audioChunksRef.current, finalMimeType ? { type: finalMimeType } : undefined);
                 finalBlobRef.current = audioBlob;
                 setIsRecording(false);
-                console.log("Recording stopped. Final Blob size:", audioBlob.size, "Type:", finalMimeType);
+                console.log(`[${isStudioMode ? 'STUDIO' : 'NORMAL'}] Recording stopped. Final Blob size:`, audioBlob.size, "Type:", finalMimeType);
             };
 
-            recorder.start(1000); // 1s chunks
+            recorder.start(200); // 200ms chunks to prevent massive memory spikes at the end of long recordings
             mediaRecorderRef.current = recorder;
             setIsRecording(true);
         } catch (err: any) {
@@ -108,39 +72,10 @@ export function useVocalRecorder(streamRef: React.MutableRefObject<MediaStream |
     }, [streamRef, isStudioMode]);
 
     const stopRecording = useCallback(() => {
-        if (isStudioMode) {
-            if (audioContextRef.current && scriptProcessorRef.current && mediaStreamSourceRef.current) {
-                scriptProcessorRef.current.disconnect();
-                mediaStreamSourceRef.current.disconnect();
-
-                // Flatten PCM chunks
-                const totalLength = pcmDataRef.current.reduce((acc, chunk) => acc + chunk.length, 0);
-                const flatData = new Float32Array(totalLength);
-                let offset = 0;
-                for (let chunk of pcmDataRef.current) {
-                    flatData.set(chunk, offset);
-                    offset += chunk.length;
-                }
-
-                const sampleRate = audioContextRef.current.sampleRate;
-                const wavBlob = encodeWav(flatData, sampleRate, 1);
-
-                finalBlobRef.current = wavBlob;
-                console.log("WAV Recording stopped. Final Blob size:", wavBlob.size, "SampleRate:", sampleRate);
-
-                audioContextRef.current.close();
-                audioContextRef.current = null;
-                scriptProcessorRef.current = null;
-                mediaStreamSourceRef.current = null;
-                pcmDataRef.current = [];
-            }
-            setIsRecording(false);
-        } else {
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-                mediaRecorderRef.current.stop();
-            }
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
         }
-    }, [isStudioMode]);
+    }, []);
 
     const getRecordedBlob = useCallback(() => {
         return finalBlobRef.current;
