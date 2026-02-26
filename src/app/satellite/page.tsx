@@ -51,9 +51,6 @@ export default function SatellitePage() {
     // We use a ref to bypass react cyclic dependency issues when passing broadcastPitch downwards
     const broadcastPitchRef = useRef<(p: PitchData | null) => void>(() => { });
 
-    // Store the exact latency drift telemetry measured at hardware initialization
-    const captureOffsetRef = useRef<number>(1500);
-
     const handleMasterCommand = useCallback(async (action: string, payload: any) => {
         console.log("Satellite received command:", action, payload);
 
@@ -77,27 +74,12 @@ export default function SatellitePage() {
         } else if (action === 'START_RECORD') {
             if (isSoloRecording) return; // Prevent master from interrupting active solo take
 
-            const targetTime = payload?.targetTime || Date.now();
-
-            // Wait for the actual recording hardware to start receiving data before playing MR
-            // to ensure perfect synchronization between the audio blob timeline and the MR playback.
+            // Start the actual hardware recording pipeline immediately. 
+            // The MR playback will wait and fire EXACTLY when the microphone yields its first byte of audio data,
+            // locking the Blob's 0.0s timeline perfectly to the MR's 0.0s timeline without math.
             startRecording(() => {
-                const captureTime = Date.now();
-                captureOffsetRef.current = captureTime - targetTime; // Measures exact hardware latency drift
-
                 if (isMrReady) {
-                    if (captureOffsetRef.current < 0) {
-                        // Hardware started early, we must wait before playing the MR
-                        const waitTime = Math.abs(captureOffsetRef.current);
-                        setTimeout(() => {
-                            playBackingTrack();
-                        }, waitTime);
-                    } else {
-                        // Hardware was too slow, MR target time has theoretically passed. We play instantly.
-                        // Ideally we would seek the MR forward, but without breaking the current UI logic
-                        // we'll just start it. The Mixdown offline renderer will correct this via the offset padding.
-                        playBackingTrack();
-                    }
+                    playBackingTrack();
                 }
             });
         } else if (action === 'STOP_RECORD') {
@@ -115,8 +97,8 @@ export default function SatellitePage() {
                     clearInterval(checkBlobAndUpload);
                     clearRecordedBlob(); // Prevents multiple upload triggers from queued intervals
 
-                    console.log(`Blob ready! Uploading to Supabase... (Offset: ${captureOffsetRef.current}ms)`);
-                    const path = await uploadAudioBlob(blob, roomId, partName, captureOffsetRef.current);
+                    console.log("Blob ready! Uploading to Supabase...");
+                    const path = await uploadAudioBlob(blob, roomId, partName, 0);
                     if (path) {
                         console.log("Upload successful:", path);
                         toast.success("마스터 녹음이 파일 서버로 전송되었습니다.", { duration: 4000 });

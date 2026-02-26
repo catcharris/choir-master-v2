@@ -330,17 +330,15 @@ export default function MasterPage() {
             toast.success('전체 녹음이 종료되었습니다.\n수 초 내에 단원들의 파일이 업로드됩니다.', { duration: 5000 });
             setIsRecordingMaster(false);
         } else {
-            const TARGET_DELAY_MS = 1500;
-            const targetTime = Date.now() + TARGET_DELAY_MS;
-            broadcastCommand('START_RECORD', { targetTime });
+            // Tell satellites to start their recorders immediately.
+            // Satellites will tie MR playback perfectly to their microphone activation time.
+            broadcastCommand('START_RECORD');
 
             setIsRecordingMaster(true);
-            toast(`전달 완료: ${TARGET_DELAY_MS / 1000}초 후 전체 동기화 녹음 시작`, { icon: '🔴', duration: 3000 });
+            toast('합창단 전체 동기화 녹음 시작', { icon: '🔴', duration: 3000 });
 
-            // For the Conductor/Master who clicked the button: schedule playback to exact future time
-            setTimeout(() => {
-                if (mrUrl) playBackingTrack();
-            }, TARGET_DELAY_MS);
+            // For the Conductor/Master who clicked the button: play the MR instantly for them
+            if (mrUrl) playBackingTrack();
         }
     };
 
