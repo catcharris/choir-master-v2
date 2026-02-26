@@ -73,10 +73,14 @@ export default function SatellitePage() {
             }
         } else if (action === 'START_RECORD') {
             if (isSoloRecording) return; // Prevent master from interrupting active solo take
-            startRecording();
-            if (isMrReady) {
-                playBackingTrack();
-            }
+
+            // Wait for the actual recording hardware to start receiving data before playing MR
+            // to ensure perfect synchronization between the audio blob timeline and the MR playback.
+            startRecording(() => {
+                if (isMrReady) {
+                    playBackingTrack();
+                }
+            });
         } else if (action === 'STOP_RECORD') {
             if (isSoloRecording) return; // Don't stop if user is recording manually
             stopRecording();

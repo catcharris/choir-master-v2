@@ -15,7 +15,7 @@ export function useVocalRecorder(streamRef: React.MutableRefObject<MediaStream |
     const mediaStreamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
     const pcmDataRef = useRef<Float32Array[]>([]);
 
-    const startRecording = useCallback(() => {
+    const startRecording = useCallback((onStart?: () => void) => {
         if (!streamRef.current) {
             console.error("Cannot start recording: No active microphone stream.");
             setRecordError("마이크 스트림이 활성화되지 않았습니다.");
@@ -40,8 +40,13 @@ export function useVocalRecorder(streamRef: React.MutableRefObject<MediaStream |
                 scriptProcessorRef.current = processor;
 
                 pcmDataRef.current = [];
+                let hasStarted = false;
 
                 processor.onaudioprocess = (e) => {
+                    if (!hasStarted) {
+                        hasStarted = true;
+                        if (onStart) onStart();
+                    }
                     const inputData = e.inputBuffer.getChannelData(0);
                     // Copy data because the buffer is reused
                     pcmDataRef.current.push(new Float32Array(inputData));
@@ -75,6 +80,10 @@ export function useVocalRecorder(streamRef: React.MutableRefObject<MediaStream |
             if (!recorder) {
                 throw new Error("No supported recording format found.");
             }
+
+            recorder.onstart = () => {
+                if (onStart) onStart();
+            };
 
             recorder.ondataavailable = (e) => {
                 if (e.data.size > 0) {
