@@ -47,8 +47,8 @@ export default function RootLayout({
         <PortraitLockOverlay />
         {children}
         <Toaster
-          position="bottom-center"
-          containerStyle={{ bottom: 'calc(env(safe-area-inset-bottom) + 36px)' }}
+          position="top-center"
+          containerStyle={{ top: '50vh', transform: 'translateY(-50%)' }}
           toastOptions={{
             style: {
               background: '#1e293b', // slate-800

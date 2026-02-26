@@ -8,6 +8,7 @@ interface RecordingsDrawerProps {
     isOpen: boolean;
     onClose: () => void;
     mrHistory: { url: string, timestamp: number }[];
+    liveMrUrl: string | null;
     tracks: PracticeTrack[];
     isLoadingTracks: boolean;
     onLoadTracks: (deletedNames?: string[]) => void;
@@ -18,6 +19,7 @@ export function RecordingsDrawer({
     isOpen,
     onClose,
     mrHistory,
+    liveMrUrl,
     tracks,
     isLoadingTracks,
     onLoadTracks
@@ -83,7 +85,7 @@ export function RecordingsDrawer({
                             // The MR must have been uploaded *before* or *at* the time this vocal take was recorded.
                             // Since mrHistory is sorted newest to oldest, we find the *first* one that is older than the take.
                             const correctMr = mrHistory.find(mr => mr.timestamp <= group.timestamp);
-                            const resolvedMrUrl = correctMr ? correctMr.url : (mrHistory.length > 0 ? mrHistory[mrHistory.length - 1].url : null);
+                            const resolvedMrUrl = correctMr ? correctMr.url : (mrHistory.length > 0 ? mrHistory[mrHistory.length - 1].url : liveMrUrl);
 
                             return (
                                 <TakeMixer

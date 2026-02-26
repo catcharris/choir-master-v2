@@ -441,6 +441,7 @@ export default function MasterPage() {
                 isOpen={isDrawerOpen}
                 onClose={() => setIsDrawerOpen(false)}
                 mrHistory={mrHistory}
+                liveMrUrl={mrUrl}
                 tracks={tracks}
                 isLoadingTracks={isLoadingTracks}
                 onLoadTracks={loadTracks}
