@@ -28,7 +28,8 @@ export function RecordingsDrawer({
         const takes: { timestamp: number, tracks: PracticeTrack[] }[] = [];
         tracks.forEach(t => {
             // Bulletproof regex to extract the timestamp right before '_offset' or before the file extension if offset is missing.
-            const match = t.name.match(/_(\d+)(?:_offset_\d+)?\.\w+$/);
+            // Note: -? added to optionally allow negative offset values like _offset_-100
+            const match = t.name.match(/_(\d+)(?:_offset_-?\d+)?\.\w+$/);
             if (!match) return;
             const ts = parseInt(match[1], 10);
 
