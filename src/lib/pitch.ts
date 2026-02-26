@@ -53,7 +53,12 @@ export function getPitchData(frequency: number, rmsVolume: number, a4: number = 
  * @param sampleRate The sample rate of the AudioContext
  * @returns The detected pitch in Hz and rms volume, or null
  */
-export function autoCorrelate(buffer: Float32Array, sampleRate: number, mode: 'vocal' | 'piano' = 'vocal'): { frequency: number, rms: number } | null {
+export function autoCorrelate(
+    buffer: Float32Array,
+    sampleRate: number,
+    mode: 'vocal' | 'piano' = 'vocal',
+    customThreshold?: number
+): { frequency: number, rms: number } | null {
     const SIZE = buffer.length;
     let rms = 0;
 
@@ -66,7 +71,12 @@ export function autoCorrelate(buffer: Float32Array, sampleRate: number, mode: 'v
     // RMS Volume Threshold (Noise Gate / Proximity Bubble)
     // 0.002 allows comfortable reading distance at ~60cm even for soft (piano) choral dynamics.
     // 0.001 allows picking up a piano across the rehearsal room (Piano mode).
-    const rmsThreshold = mode === 'piano' ? 0.001 : 0.002;
+    // customThreshold overrides these defaults (e.g. 0.01 for close-mic anti-noise mode)
+    let rmsThreshold = mode === 'piano' ? 0.001 : 0.002;
+    if (customThreshold !== undefined) {
+        rmsThreshold = customThreshold;
+    }
+
     if (rms < rmsThreshold) {
         return null;
     }

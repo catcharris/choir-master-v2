@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# native capacitor projects (Ignore for Tailwind Oxide parser)
+/ios/
+/android/

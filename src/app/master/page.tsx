@@ -8,6 +8,7 @@ import { useMaestroCamMaster } from '@/lib/webrtc/useMaestroCamMaster';
 import { fetchRoomTracks, PracticeTrack } from '@/lib/storageUtils';
 import { uploadBackingTrack, fetchLatestBackingTrack } from '@/lib/backingTrackUtils';
 import { uploadScoreImages } from '@/lib/scoreUtils';
+import { detectChord } from '@/lib/chordDetector';
 
 import { MasterHeader } from '@/components/master/MasterHeader';
 import { SatelliteGrid, SatelliteData } from '@/components/master/SatelliteGrid';
@@ -73,34 +74,41 @@ export default function MasterPage() {
 
     if (!isConnected) {
         return (
-            <main className="min-h-[100dvh] bg-slate-950 text-slate-100 flex items-center justify-center p-4">
+            <main className="h-[100dvh] w-full fixed inset-0 overflow-hidden bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6 sm:p-8">
                 {/* Home Navigation */}
-                <div className="absolute top-6 left-6 z-20">
+                <div className="absolute top-6 left-6 z-[9999] pointer-events-auto">
                     <Link href="/" className="flex items-center justify-center w-12 h-12 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-2xl backdrop-blur-md transition-all border border-white/5 hover:border-white/20">
                         <Home size={20} />
                     </Link>
                 </div>
 
-                <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl">
-                    <div className="flex justify-center mb-6">
-                        <div className="w-16 h-16 bg-indigo-500/20 text-indigo-400 rounded-2xl flex items-center justify-center">
+                {/* Cinematic Background Glow */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[60%] bg-indigo-600/15 blur-[100px] rounded-[100%] pointer-events-none" />
+
+                <div className="w-full max-w-sm relative z-[9999] bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-8 shadow-2xl pointer-events-auto">
+                    <div className="flex justify-center mb-6 relative">
+                        <div className="absolute inset-0 bg-indigo-500/30 blur-xl rounded-full animate-pulse" />
+                        <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-2xl flex items-center justify-center relative shadow-lg">
                             <LayoutGrid size={32} />
                         </div>
                     </div>
-                    <h1 className="text-2xl font-bold text-center mb-2">지휘자 마스터 뷰</h1>
-                    <p className="text-slate-400 text-sm text-center mb-8">
-                        합창단원(위성)들의 스마트폰에서 송신하는 실시간 음정 데이터를 모니터링합니다.
-                    </p>
 
-                    <form onSubmit={handleConnect} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-400 mb-1">Room 코드를 입력하세요</label>
+                    <div className="text-center mb-10">
+                        <h1 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">지휘자 마스터 뷰</h1>
+                        <p className="text-slate-400 text-sm mt-2 leading-relaxed">
+                            합창단원(위성)들의 스마트폰에서 송신하는<br />실시간 음정 데이터를 모니터링합니다.
+                        </p>
+                    </div>
+
+                    <form onSubmit={handleConnect} className="space-y-5">
+                        <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Room Code</label>
                             <input
                                 type="text"
                                 placeholder="예: 9876"
                                 value={roomId}
                                 onChange={(e) => setRoomId(e.target.value)}
-                                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-center tracking-widest"
+                                className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-xl font-bold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600 placeholder:font-normal"
                                 required
                             />
                         </div>
@@ -108,17 +116,27 @@ export default function MasterPage() {
                         <button
                             type="submit"
                             disabled={wsStatus === 'connecting'}
-                            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-lg py-4 rounded-xl transition-colors mt-4"
+                            className="w-full mt-6 bg-white/10 hover:bg-indigo-600 text-white disabled:opacity-50 font-bold text-lg py-4 rounded-2xl transition-all shadow-lg active:scale-[0.98] relative overflow-hidden group border border-white/10 hover:border-indigo-400/50"
                         >
-                            {wsStatus === 'connecting' ? '방 생성 중...' : '마스터 뷰 열람하기'}
+                            {/* Hover flare effect */}
+                            <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12" />
+                            <span className="relative z-10">{wsStatus === 'connecting' ? '방 생성 중...' : '마스터 뷰 열람하기'}</span>
                         </button>
                     </form>
                 </div>
+
+                {/* Safe area footer spacer */}
+                <div className="h-6 shrink-0 w-full" />
             </main>
         );
     }
 
     const satelliteArray: SatelliteData[] = Object.values(satellites).sort((a, b) => a.part.localeCompare(b.part));
+
+    const activeNotes = satelliteArray
+        .filter(sat => sat.connected && sat.pitch)
+        .map(sat => sat.pitch!.note);
+    const activeChord = detectChord(activeNotes);
 
     const handleMRUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -230,6 +248,7 @@ export default function MasterPage() {
                 onSwitchMode={setViewMode}
                 isStudioMode={isStudioMode}
                 onToggleStudioMode={handleToggleStudioMode}
+                activeChord={activeChord}
             />
 
             <div className="flex-1 p-6 overflow-y-auto w-full">

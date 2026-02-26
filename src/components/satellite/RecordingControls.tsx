@@ -1,10 +1,13 @@
 import React from 'react';
 import { LogOut, Mic, UploadCloud } from 'lucide-react';
+import { RecordingProfile } from '@/lib/audio/usePitchTracker';
 
 interface RecordingControlsProps {
     isRecording: boolean;
     isMrReady: boolean;
     isSoloRecording: boolean;
+    recordingProfile: RecordingProfile;
+    setRecordingProfile: (profile: RecordingProfile) => void;
     onDisconnect: () => void;
     onSoloRecordToggle: () => void;
     hasScores: boolean;
@@ -15,6 +18,8 @@ export function RecordingControls({
     isRecording,
     isMrReady,
     isSoloRecording,
+    recordingProfile,
+    setRecordingProfile,
     onDisconnect,
     onSoloRecordToggle,
     hasScores,
@@ -22,6 +27,33 @@ export function RecordingControls({
 }: RecordingControlsProps) {
     return (
         <div className="w-full flex-shrink-0 pt-4 flex flex-col gap-3 relative z-20">
+            {/* 1. Dynamic Recording Profile Toggle */}
+            <div className="w-full space-y-2 mb-2 p-4 bg-slate-900/80 backdrop-blur-md rounded-2xl border border-white/5">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">마이크 수음 범위 실시간 변경 (Gain)</label>
+                <div className="flex bg-black/40 rounded-2xl overflow-hidden border border-white/5 w-full p-1">
+                    <button
+                        type="button"
+                        onClick={() => setRecordingProfile('part')}
+                        className={`flex-1 py-3 px-1 text-[11px] sm:text-xs font-bold rounded-xl transition-all ${recordingProfile === 'part' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        파트<br /><span className="text-[9px] sm:text-[10px] opacity-70 font-normal mt-0.5 block">전체 수음</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setRecordingProfile('quartet')}
+                        className={`flex-1 py-3 px-1 text-[11px] sm:text-xs font-bold rounded-xl transition-all ${recordingProfile === 'quartet' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        중창<br /><span className="text-[9px] sm:text-[10px] opacity-70 font-normal mt-0.5 block">소그룹 수음</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setRecordingProfile('solo')}
+                        className={`flex-1 py-3 px-1 text-[11px] sm:text-xs font-bold rounded-xl transition-all ${recordingProfile === 'solo' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        솔로<br /><span className="text-[9px] sm:text-[10px] opacity-70 font-normal mt-0.5 block">원장/차단</span>
+                    </button>
+                </div>
+            </div>
             {/* 3. Open Score Button */}
             {hasScores && (
                 <button

@@ -3,20 +3,31 @@
 import Link from 'next/link';
 import { LayoutGrid, Mic2, Activity, Music4, ChevronRight } from 'lucide-react';
 import { useTranslation } from '@/lib/useTranslation';
+import { useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
   const t = useTranslation();
+  const router = useRouter();
+
+  // Redirect native iOS/Android apps directly to the Tuner
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      router.replace('/tuner');
+    }
+  }, [router]);
 
   return (
     <main className="h-[100dvh] w-full bg-slate-950 text-slate-100 flex flex-col font-sans overflow-hidden relative selection:bg-indigo-500/30">
 
       {/* Dynamic Animated Mesh Gradient Background */}
-      <div className="absolute inset-0 pointer-events-none opacity-30">
+      <div className="absolute inset-0 pointer-events-none opacity-30 [.is-native_&]:hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full mix-blend-screen filter blur-[100px] bg-indigo-600/30 animate-[spin_20s_linear_infinite]" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] rounded-full mix-blend-screen filter blur-[120px] bg-emerald-600/20 animate-[spin_25s_linear_infinite_reverse]" />
       </div>
 
-      <div className="flex-1 flex flex-col justify-between p-4 sm:p-8 w-full max-w-4xl mx-auto z-10 h-full safe-area-padding">
+      <div className="[.is-native_&]:hidden flex-1 flex flex-col justify-between p-4 sm:p-8 w-full max-w-4xl mx-auto z-10 h-full safe-area-padding">
 
         {/* Premium Hero Section (Compact) */}
         <div className="flex items-center justify-between gap-4 mt-2 sm:mt-6 mb-4 sm:mb-8 shrink-0">
@@ -58,7 +69,7 @@ export default function Home() {
                   <p className="text-slate-400 text-[11px] sm:text-sm md:text-sm lg:text-base font-medium line-clamp-2 md:line-clamp-none leading-snug md:leading-relaxed break-keep">{t.menu_master_desc}</p>
                 </div>
               </div>
-              <div className="w-8 h-8 shrink-0 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-indigo-500 group-hover:text-white text-slate-500 transition-colors duration-300 relative z-10 md:self-end md:mt-auto">
+              <div className="w-8 h-8 shrink-0 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-indigo-500 group-hover:text-white text-slate-500 transition-colors duration-300 relative z-10 md:absolute md:bottom-6 md:right-6">
                 <ChevronRight size={18} />
               </div>
             </div>
@@ -77,7 +88,7 @@ export default function Home() {
                   <p className="text-slate-400 text-[11px] sm:text-sm md:text-sm lg:text-base font-medium line-clamp-2 md:line-clamp-none leading-snug md:leading-relaxed break-keep">{t.menu_satellite_desc}</p>
                 </div>
               </div>
-              <div className="w-8 h-8 shrink-0 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white text-slate-500 transition-colors duration-300 relative z-10 md:self-end md:mt-auto">
+              <div className="w-8 h-8 shrink-0 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white text-slate-500 transition-colors duration-300 relative z-10 md:absolute md:bottom-6 md:right-6">
                 <ChevronRight size={18} />
               </div>
             </div>
@@ -96,7 +107,7 @@ export default function Home() {
                   <p className="text-slate-400 text-[10px] sm:text-xs md:text-xs lg:text-sm font-medium truncate md:whitespace-normal break-keep">{t.menu_tuner_desc}</p>
                 </div>
               </div>
-              <div className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full bg-white/5 group-hover:bg-cyan-500 group-hover:text-white text-slate-500 transition-colors duration-300 relative z-10 text-xs md:self-end md:mt-auto">
+              <div className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full bg-white/5 group-hover:bg-cyan-500 group-hover:text-white text-slate-500 transition-colors duration-300 relative z-10 text-xs md:absolute md:bottom-6 md:right-6">
                 <ChevronRight size={16} />
               </div>
             </div>

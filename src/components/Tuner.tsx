@@ -1,18 +1,138 @@
 // src/components/Tuner.tsx
 "use client"
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAudioEngine } from '@/lib/useAudioEngine';
-import { Mic, MicOff, AlertCircle, ArrowDown, ArrowUp, CheckCircle, Activity, Info, X, Settings } from 'lucide-react';
+import { Mic, MicOff, AlertCircle, ArrowDown, ArrowUp, CheckCircle, Activity, Info, X, Settings, Lock, Crown, MonitorUp } from 'lucide-react';
+import { registerPlugin } from '@capacitor/core';
+import { Motion } from '@capacitor/motion';
+
+const WatchBridge = registerPlugin<any>('WatchBridge');
 
 export default function Tuner() {
+    const [isPro, setIsPro] = useState(false);
+    const [showProModal, setShowProModal] = useState(false);
+    const [showMirrorModal, setShowMirrorModal] = useState(false);
     const [a4, setA4] = useState(440);
     const [tolerance, setTolerance] = useState(20); // Default to Amateur (±20 cents)
+    const [isCloseMic, setIsCloseMic] = useState(false); // Toggle for ~30cm noise rejection
     const [showInfo, setShowInfo] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
-    const { listenMode, startListening, stopListening, clearPitch, pitch, error } = useAudioEngine(a4);
+    const { listenMode, startListening, stopListening, clearPitch, pitch, error } = useAudioEngine(a4, undefined, false, isCloseMic);
 
     const isListening = listenMode === 'vocal';
     const isAutoTuning = listenMode === 'piano';
+
+    // Mutable ref to access latest state inside the motion event listener
+    const isListeningRef = useRef(isListening);
+    const lastShakeRef = useRef(0);
+
+    useEffect(() => {
+        isListeningRef.current = isListening;
+    }, [isListening]);
+
+    // Watch remote control logic
+    useEffect(() => {
+        let isMounted = true;
+        const setupWatchListener = async () => {
+            try {
+                await WatchBridge.addListener('onWatchCommand', (info: any) => {
+                    if (!isMounted) return;
+                    console.log("Received Watch Command:", info.command);
+                    if (info.command === 'start') {
+                        startListening('vocal');
+                    } else if (info.command === 'stop') {
+                        stopListening();
+                    }
+                });
+            } catch (e) {
+                console.log("WatchBridge addListener error:", e);
+            }
+        };
+        setupWatchListener();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [startListening, stopListening]);
+
+    // Shake to toggle logic
+    useEffect(() => {
+        let isMounted = true;
+
+        const setupMotion = async () => {
+            try {
+                await Motion.addListener('accel', (event) => {
+                    if (!isMounted) return;
+
+                    const accel = event.acceleration;
+                    if (!accel || accel.x === undefined || accel.y === undefined || accel.z === undefined) return;
+
+                    // Calculate total magnitude of acceleration
+                    const magnitude = Math.sqrt(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z);
+
+                    // Threshold for a "shake" (typically around 15-20 m/s^2 on iOS)
+                    if (magnitude > 18) {
+                        const now = Date.now();
+                        // Debounce shakes to prevent multiple triggers (1 second timeout)
+                        if (now - lastShakeRef.current > 1000) {
+                            lastShakeRef.current = now;
+                            if (isListeningRef.current) {
+                                stopListening();
+                            } else {
+                                startListening('vocal');
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.log("Motion API not supported or permission denied", error);
+            }
+        };
+
+        setupMotion();
+
+        return () => {
+            isMounted = false;
+            Motion.removeAllListeners();
+        };
+    }, [startListening, stopListening]);
+
+    const handleProAction = (action: () => void) => {
+        if (isPro) {
+            action();
+        } else {
+            setShowProModal(true);
+        }
+    };
+
+    // Bridge pitch data to Apple Watch Extension
+    useEffect(() => {
+        try {
+            if (isListening) {
+                if (pitch) {
+                    WatchBridge.sendPitchData({
+                        pitch: (pitch.note?.replace(/[0-9]/g, '') || 'A') + pitch.octave.toString(),
+                        cents: pitch.cents,
+                        isListening: true
+                    }).catch((e: any) => console.log('WatchBridge wait/error:', e));
+                } else {
+                    WatchBridge.sendPitchData({
+                        pitch: "--",
+                        cents: 0.0,
+                        isListening: true
+                    }).catch((e: any) => console.log('WatchBridge wait/error:', e));
+                }
+            } else {
+                WatchBridge.sendPitchData({
+                    pitch: "A4",
+                    cents: 0.0,
+                    isListening: false
+                }).catch((e: any) => console.log('WatchBridge wait/error:', e));
+            }
+        } catch (error) {
+            console.log("Failed to call WatchBridge:", error);
+        }
+    }, [pitch, isListening]);
 
     // Auto-tuning logic for the piano 'A' note
     useEffect(() => {
@@ -53,13 +173,22 @@ export default function Tuner() {
                 >
                     <Info size={24} />
                 </button>
-                <button
-                    onClick={() => setShowSettings(true)}
-                    className="absolute top-6 right-6 text-slate-500 hover:text-indigo-400 transition-colors"
-                    title="튜너 설정"
-                >
-                    <Settings size={24} />
-                </button>
+                <div className="absolute top-6 right-6 flex items-center gap-4">
+                    <button
+                        onClick={() => setShowMirrorModal(true)}
+                        className="text-slate-500 hover:text-indigo-400 transition-colors"
+                        title="화면 미러링 가이드"
+                    >
+                        <MonitorUp size={24} />
+                    </button>
+                    <button
+                        onClick={() => setShowSettings(true)}
+                        className="text-slate-500 hover:text-indigo-400 transition-colors"
+                        title="튜너 설정"
+                    >
+                        <Settings size={24} />
+                    </button>
+                </div>
 
                 {error && (
                     <div className="bg-red-900/50 text-red-200 p-3 rounded-lg mt-8 mb-4 flex items-center gap-2 border border-red-800">
@@ -69,7 +198,7 @@ export default function Tuner() {
                 )}
 
                 {/* Instant Note Display */}
-                <div className={`relative flex flex-col items-center justify-center w-72 h-72 ${error ? 'mb-6' : 'mt-8 mb-10'} rounded-full border-4 transition-all duration-150 ${listenMode === 'idle' ? 'border-slate-800 bg-slate-800/50' :
+                <div className={`shrink-0 relative flex flex-col items-center justify-center w-72 h-72 ${error ? 'mb-6' : 'mt-8 mb-10'} rounded-full border-4 transition-all duration-150 ${listenMode === 'idle' ? 'border-slate-800 bg-slate-800/50' :
                     isAutoTuning ? 'border-amber-500/50 bg-amber-500/10 shadow-[0_0_50px_rgba(245,158,11,0.2)]' :
                         !pitch ? 'border-indigo-500/30 bg-indigo-500/10' :
                             status === 'STABLE' ? 'border-green-500 bg-green-500/10 shadow-[0_0_50px_rgba(34,197,94,0.3)]' :
@@ -112,36 +241,7 @@ export default function Tuner() {
                                 <span className="text-4xl opacity-50 ml-1">{pitch.octave}</span>
                             </div>
 
-                            {/* Dynamics Display */}
-                            <div
-                                key={
-                                    pitch.rmsVolume < 0.005 ? 'pp' :
-                                        pitch.rmsVolume < 0.01 ? 'p' :
-                                            pitch.rmsVolume < 0.02 ? 'mp' :
-                                                pitch.rmsVolume < 0.05 ? 'mf' :
-                                                    pitch.rmsVolume < 0.12 ? 'f' :
-                                                        pitch.rmsVolume < 0.25 ? 'ff' : 'fff'
-                                }
-                                className={`font-serif italic text-3xl mb-2 pr-2 ${pitch.rmsVolume < 0.005 ? 'text-slate-500' :
-                                    pitch.rmsVolume < 0.01 ? 'text-indigo-300' :
-                                        pitch.rmsVolume < 0.02 ? 'text-indigo-400' :
-                                            pitch.rmsVolume < 0.05 ? 'text-emerald-400' :
-                                                pitch.rmsVolume < 0.12 ? 'text-amber-400' :
-                                                    pitch.rmsVolume < 0.25 ? 'text-orange-500' :
-                                                        'text-red-500 font-extrabold'
-                                    }`}
-                            >
-                                {
-                                    pitch.rmsVolume < 0.005 ? 'pp' :
-                                        pitch.rmsVolume < 0.01 ? 'p' :
-                                            pitch.rmsVolume < 0.02 ? 'mp' :
-                                                pitch.rmsVolume < 0.05 ? 'mf' :
-                                                    pitch.rmsVolume < 0.12 ? 'f' :
-                                                        pitch.rmsVolume < 0.25 ? 'ff' : 'fff'
-                                }
-                            </div>
-
-                            <div className="text-slate-500 font-mono text-sm mb-4 bg-slate-800/50 px-3 py-1 rounded-full">
+                            <div className="text-slate-500 font-mono text-sm mb-4 mt-6 bg-slate-800/50 px-3 py-1 rounded-full">
                                 {Math.round(pitch.frequency)} Hz | {Math.round(pitch.cents)} cents
                             </div>
 
@@ -182,20 +282,26 @@ export default function Tuner() {
                     )}
                 </button>
                 <p className="text-slate-500 text-sm mt-4 text-center max-w-xs">
-                    {isListening ? "단원의 정확한 음정(음 이탈)을 즉시 확인합니다." : "보컬/합창 전용 정밀 피치 트래커"}
+                    {isListening
+                        ? (isCloseMic ? "주변 소음을 차단하고 가까운 소리만 집중 수음합니다." : "단원의 정확한 음정(음 이탈)을 즉시 확인합니다.")
+                        : "버튼을 누르거나 기기를 살짝 흔들어 시작하세요"}
                 </p>
             </div>
 
             {/* Settings Modal Overlay */}
             {
                 showSettings && (
-                    <div className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center bg-slate-950/80 backdrop-blur-sm">
-                        {/* Bottom Sheet style on mobile, centered modal on desktop */}
-                        <div className="bg-slate-900 border border-slate-700 sm:rounded-3xl rounded-t-3xl p-6 w-full max-w-md shadow-2xl animate-in slide-in-from-bottom-5 fade-in duration-200">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+                        <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 fade-in duration-200">
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
                                     <Settings className="text-indigo-400" size={20} />
                                     튜너 설정
+                                    {!isPro && (
+                                        <button onClick={() => setShowProModal(true)} className="ml-2 bg-amber-500/20 text-amber-400 text-[10px] px-2 py-1 rounded-full uppercase tracking-wider font-bold hover:bg-amber-500/30 flex items-center gap-1">
+                                            <Crown size={10} /> PRO
+                                        </button>
+                                    )}
                                 </h2>
                                 <button
                                     onClick={() => setShowSettings(false)}
@@ -241,7 +347,36 @@ export default function Tuner() {
 
                                 <div className="w-full h-px bg-slate-800 my-2"></div>
 
-                                {/* A4 Calibration Settings */}
+                                {/* 1.5. Proximity Gate (Close-Mic Mode) */}
+                                <div className="flex flex-col gap-3">
+                                    <span className="text-slate-300 font-medium">
+                                        마이크 수음 범위 (소음 차단)
+                                    </span>
+                                    <div className="flex bg-slate-950 rounded-xl overflow-hidden border border-slate-700 w-full">
+                                        <button
+                                            onClick={() => setIsCloseMic(false)}
+                                            className={`flex-1 py-3 text-xs font-bold transition-colors ${!isCloseMic ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                                        >
+                                            일반 모드<br /><span className="text-[10px] opacity-70">약 60cm</span>
+                                        </button>
+                                        <button
+                                            onClick={() => handleProAction(() => setIsCloseMic(true))}
+                                            className={`flex-1 py-3 text-xs font-bold transition-colors border-l border-slate-700 ${isCloseMic ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                                        >
+                                            <div className="flex items-center justify-center gap-1 relative">
+                                                근접 모드 {!isPro && <Lock size={12} className="text-amber-500/70 ml-0.5" />}
+                                            </div>
+                                            <span className="text-[10px] opacity-70">약 30cm (합창 중)</span>
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-slate-500 leading-relaxed px-1">
+                                        합창 연습 중에 내 목소리만 정확히 분리하고 싶다면 <strong>근접 모드</strong>를 켜고 스마트폰을 얼굴 가까이(30cm 이내) 대고 부르세요. 주변 단원들의 소리는 노이즈 게이트로 차단됩니다.
+                                    </p>
+                                </div>
+
+                                <div className="w-full h-px bg-slate-800 my-2"></div>
+
+                                {/* 2. A4 Calibration Settings */}
                                 <div className="flex flex-col gap-3">
                                     <span className="text-slate-300 font-medium flex justify-between items-center">
                                         피아노 기준음 (A4) 교정
@@ -250,10 +385,11 @@ export default function Tuner() {
 
                                     <div className="flex items-center gap-4 w-full justify-between bg-slate-950 p-3 rounded-2xl border border-slate-800">
                                         <button
-                                            onClick={() => setA4(prev => Math.max(430, prev - 1))}
+                                            onClick={() => handleProAction(() => setA4(prev => Math.max(430, prev - 1)))}
                                             disabled={isListening || isAutoTuning}
-                                            className="w-12 h-12 flex items-center justify-center rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors disabled:opacity-30"
+                                            className="w-12 h-12 flex items-center justify-center rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors disabled:opacity-30 relative"
                                         >
+                                            {!isPro && <Lock size={10} className="absolute top-2 right-2 text-amber-500/50" />}
                                             -
                                         </button>
                                         <div className="flex-1 text-center">
@@ -261,26 +397,28 @@ export default function Tuner() {
                                             <span className="text-slate-500 ml-1 text-sm">Hz</span>
                                         </div>
                                         <button
-                                            onClick={() => setA4(prev => Math.min(450, prev + 1))}
+                                            onClick={() => handleProAction(() => setA4(prev => Math.min(450, prev + 1)))}
                                             disabled={isListening || isAutoTuning}
-                                            className="w-12 h-12 flex items-center justify-center rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors disabled:opacity-30"
+                                            className="w-12 h-12 flex items-center justify-center rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors disabled:opacity-30 relative"
                                         >
+                                            {!isPro && <Lock size={10} className="absolute top-2 right-2 text-amber-500/50" />}
                                             +
                                         </button>
                                     </div>
                                     <button
-                                        onClick={() => {
+                                        onClick={() => handleProAction(() => {
                                             if (isAutoTuning) {
                                                 stopListening();
                                             } else {
                                                 startListening('piano');
                                             }
-                                        }}
-                                        className={`w-full py-4 mt-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors ${isAutoTuning
+                                        })}
+                                        className={`w-full py-4 mt-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors relative ${isAutoTuning
                                             ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50 animate-pulse'
                                             : 'bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30'
                                             }`}
                                     >
+                                        {!isPro && <Lock size={14} className="absolute right-4 text-amber-500/50" />}
                                         {isAutoTuning ? (
                                             <>
                                                 <Activity size={18} />
@@ -292,6 +430,66 @@ export default function Tuner() {
                                     </button>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Paywall Modal Overlay */}
+            {
+                showProModal && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
+                        <div className="bg-slate-900 border border-amber-500/30 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 blur-3xl rounded-full pointer-events-none" />
+                            <div className="flex justify-between items-center mb-6 relative z-10">
+                                <h2 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                                    <Crown className="text-amber-400" size={24} />
+                                    Tuner PRO
+                                </h2>
+                                <button
+                                    onClick={() => setShowProModal(false)}
+                                    className="p-2 bg-slate-800 text-slate-400 hover:text-white rounded-full transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="relative z-10 text-center mb-6">
+                                <div className="w-16 h-16 bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
+                                    <Crown size={32} />
+                                </div>
+                                <h3 className="text-lg font-bold text-white mb-2">프리미엄 기능 잠금 해제</h3>
+                                <p className="text-sm text-slate-400 leading-relaxed">
+                                    A4 기준음 미세 교정과 합창단 근접 마이크 모드 등 전문가를 위한 튜닝을 제공합니다.
+                                </p>
+                            </div>
+
+                            <div className="space-y-4 mb-8 relative z-10 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                                <div className="flex items-start gap-3 text-sm text-slate-300">
+                                    <CheckCircle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                                    <span><strong>A4 주파수 미세 조절</strong><br /><span className="text-slate-500 text-xs">430Hz~450Hz 사이의 디테일한 교정</span></span>
+                                </div>
+                                <div className="flex items-start gap-3 text-sm text-slate-300">
+                                    <CheckCircle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                                    <span><strong>피아노 소리 자동 인식</strong><br /><span className="text-slate-500 text-xs">A음정을 들려주면 자동으로 튜닝</span></span>
+                                </div>
+                                <div className="flex items-start gap-3 text-sm text-slate-300">
+                                    <CheckCircle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                                    <span><strong>합창단 근접 마이크 모드</strong><br /><span className="text-slate-500 text-xs">주변 소음을 완벽히 차단하는 게이트</span></span>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    // Test unlock implementation
+                                    setIsPro(true);
+                                    setShowProModal(false);
+                                }}
+                                className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-amber-500/20 active:scale-[0.98] text-lg relative z-10"
+                            >
+                                PRO 등급 해제 (₩12,000)
+                            </button>
+                            <p className="text-center text-xs text-slate-500 mt-4 font-medium">한 번 결제로 평생 소장하세요.</p>
                         </div>
                     </div>
                 )
@@ -356,6 +554,60 @@ export default function Tuner() {
                         </div>
                     </div>
                 )}
+
+            {/* Mirroring Modal Overlay */}
+            {
+                showMirrorModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+                        <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                                    <MonitorUp className="text-indigo-400" size={24} />
+                                    화면 미러링
+                                </h2>
+                                <button
+                                    onClick={() => setShowMirrorModal(false)}
+                                    className="p-2 bg-slate-800 text-slate-400 hover:text-white rounded-full transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="text-center mb-6">
+                                <div className="w-16 h-16 bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                    <MonitorUp size={32} />
+                                </div>
+                                <h3 className="text-lg font-bold text-white mb-2">대형 모니터로 화면 공유</h3>
+                                <p className="text-sm text-slate-400 leading-relaxed">
+                                    지휘자나 파트장이 전체 화면을 띄워두고<br />합창 단원들을 교육할 때 유용합니다.
+                                </p>
+                            </div>
+
+                            <div className="space-y-4 mb-6 relative z-10 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                                <div className="flex items-start gap-3 text-sm text-slate-300">
+                                    <div className="bg-slate-800 w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs text-indigo-400 font-bold">1</div>
+                                    <span>iPhone의 우측 상단을 아래로 쓸어내려<br /><strong className="text-white">제어 센터</strong>를 엽니다.</span>
+                                </div>
+                                <div className="flex items-start gap-3 text-sm text-slate-300">
+                                    <div className="bg-slate-800 w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs text-indigo-400 font-bold">2</div>
+                                    <span><strong>화면 미러링</strong> (네모 두 개가 겹친 아이콘) 버튼을 탭합니다.</span>
+                                </div>
+                                <div className="flex items-start gap-3 text-sm text-slate-300">
+                                    <div className="bg-slate-800 w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs text-indigo-400 font-bold">3</div>
+                                    <span>연결할 <strong>스마트 TV나 모니터</strong> (Apple TV 등)를 선택하세요.</span>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => setShowMirrorModal(false)}
+                                className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-colors"
+                            >
+                                확인
+                            </button>
+                        </div>
+                    </div>
+                )
+            }
         </>
     );
 }

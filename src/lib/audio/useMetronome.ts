@@ -1,9 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
+export type TimeSignature = '2/4' | '3/4' | '4/4' | '6/8';
+
 export function useMetronome() {
     const [isPlaying, setIsPlaying] = useState(false);
     const [bpm, setBpm] = useState(120);
-    const [beatsPerMeasure, setBeatsPerMeasure] = useState(4);
+    const [timeSignature, setTimeSignature] = useState<TimeSignature>('4/4');
+
+    const beatsPerMeasure = timeSignature === '6/8' ? 6 : parseInt(timeSignature.split('/')[0]);
 
     const audioContext = useRef<AudioContext | null>(null);
     const currentNote = useRef(0);
@@ -34,12 +38,17 @@ export function useMetronome() {
         osc.connect(envelope);
         envelope.connect(audioContext.current.destination);
 
-        // Higher pitch on the downbeat
+        // Accents setup based on classical time signatures
+        let freq = 440.0;
         if (beatNumber === 0) {
-            osc.frequency.value = 880.0;
-        } else {
-            osc.frequency.value = 440.0;
+            freq = 880.0; // Strong downbeat
+        } else if (timeSignature === '4/4' && beatNumber === 2) {
+            freq = 660.0; // Medium accent on beat 3 of 4/4
+        } else if (timeSignature === '6/8' && beatNumber === 3) {
+            freq = 660.0; // Medium accent on beat 4 of 6/8
         }
+
+        osc.frequency.value = freq;
 
         envelope.gain.value = 1;
         envelope.gain.exponentialRampToValueAtTime(1, time + 0.001);
@@ -47,7 +56,7 @@ export function useMetronome() {
 
         osc.start(time);
         osc.stop(time + 0.05);
-    }, []);
+    }, [timeSignature]);
 
     const scheduler = useCallback(() => {
         if (!audioContext.current) return;
@@ -91,8 +100,10 @@ export function useMetronome() {
         if (!isPlaying) {
             initAudio();
         }
+        // when starting from stop, always reset to the leading beat
+        currentNote.current = 0;
         setIsPlaying(!isPlaying);
     };
 
-    return { isPlaying, toggle, bpm, setBpm, beatsPerMeasure, setBeatsPerMeasure };
+    return { isPlaying, toggle, bpm, setBpm, timeSignature, setTimeSignature };
 }

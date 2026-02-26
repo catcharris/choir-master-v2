@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Home, SignalHigh, Users, FolderOpen, LogOut, Music, FileImage, Video, VideoOff, Presentation } from 'lucide-react';
 import { MetronomeControl } from './MetronomeControl';
+import { DetectedChord } from '@/lib/chordDetector';
 
 interface MasterHeaderProps {
     roomId: string;
@@ -22,6 +23,7 @@ interface MasterHeaderProps {
     onSwitchMode: (mode: 'conductor' | 'manager') => void;
     isStudioMode: boolean;
     onToggleStudioMode: () => void;
+    activeChord: DetectedChord | null;
 }
 
 export function MasterHeader({
@@ -43,7 +45,8 @@ export function MasterHeader({
     viewMode,
     onSwitchMode,
     isStudioMode,
-    onToggleStudioMode
+    onToggleStudioMode,
+    activeChord
 }: MasterHeaderProps) {
     return (
         <header className="px-6 py-4 flex items-center justify-between border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-10 transition-colors duration-500">
@@ -72,9 +75,23 @@ export function MasterHeader({
                     <SignalHigh size={18} className={isRecordingMaster ? "animate-pulse" : ""} />
                     ROOM {roomId} {isRecordingMaster && "• REC"}
                 </div>
-                <div className="hidden sm:flex items-center gap-1.5 text-slate-400 text-sm font-medium">
-                    <Users size={16} />
-                    {satelliteCount} 단원
+                <div className="hidden sm:flex items-center gap-1.5 text-slate-400 text-sm font-medium whitespace-nowrap shrink-0">
+                    <Users size={16} className="shrink-0" />
+                    <span>{satelliteCount} 단원</span>
+                </div>
+
+                {/* Harmony Analysis Monitor */}
+                <div className="hidden md:flex flex-col justify-center items-center px-4 py-1 rounded-xl bg-slate-950/50 border border-slate-800/80 shadow-inner min-w-[100px]">
+                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">Live Harmony</span>
+                    {activeChord ? (
+                        <span className="text-sm font-black text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.3)]">
+                            {activeChord.name}
+                        </span>
+                    ) : (
+                        <span className="text-sm font-bold text-slate-700">
+                            ---
+                        </span>
+                    )}
                 </div>
             </div>
 

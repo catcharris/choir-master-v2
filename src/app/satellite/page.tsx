@@ -3,6 +3,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useAudioEngine } from '@/lib/useAudioEngine';
 import { useSatelliteStreamer } from '@/lib/useSatelliteStreamer';
 import { PitchData } from '@/lib/pitch';
+import { RecordingProfile } from '@/lib/audio/usePitchTracker';
 import { uploadAudioBlob } from '@/lib/uploadAudio';
 import { RadioReceiver, AlertCircle, Mic, Video } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -17,6 +18,7 @@ import { DraggableMaestroCam } from '@/components/satellite/DraggableMaestroCam'
 export default function SatellitePage() {
     const [roomId, setRoomId] = useState('');
     const [partName, setPartName] = useState('');
+    const [recordingProfile, setRecordingProfile] = useState<RecordingProfile>('part');
 
     // Phase 8: Backing Track Sync
     const [mrUrl, setMrUrl] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export default function SatellitePage() {
         listenMode, startListening, stopListening, pitch, error,
         isRecording, startRecording, stopRecording, getRecordedBlob,
         preloadBackingTrack, playBackingTrack, stopBackingTrack
-    } = useAudioEngine(440, (p) => broadcastPitchRef.current(p), isStudioMode);
+    } = useAudioEngine(440, (p) => broadcastPitchRef.current(p), isStudioMode, false, recordingProfile);
 
     // We use a ref to bypass react cyclic dependency issues when passing broadcastPitch downwards
     const broadcastPitchRef = useRef<(p: PitchData | null) => void>(() => { });
@@ -201,7 +203,7 @@ export default function SatellitePage() {
             <div className="absolute bottom-0 left-0 w-[120vw] max-w-xl h-80 bg-indigo-600/15 blur-[100px] rounded-[100%] pointer-events-none translate-y-1/2 -translate-x-1/4" />
 
             {/* Container */}
-            <div className="relative z-10 w-full h-full max-w-md flex flex-col">
+            <div className="relative z-10 w-full h-full max-w-md md:max-w-2xl lg:max-w-4xl flex flex-col">
 
                 {/* Header (Status & Room Info) */}
                 <div className={`flex-shrink-0 flex flex-col items-center pb-6 min-h-[140px] transition-all duration-500 ${maestroStream ? 'pt-64 sm:pt-72' : 'pt-2'}`}>
@@ -239,6 +241,8 @@ export default function SatellitePage() {
                     isRecording={isRecording}
                     isMrReady={isMrReady}
                     isSoloRecording={isSoloRecording}
+                    recordingProfile={recordingProfile}
+                    setRecordingProfile={setRecordingProfile}
                     onDisconnect={handleDisconnect}
                     onSoloRecordToggle={handleSoloPracticeToggle}
                     hasScores={scoreUrls.length > 0}

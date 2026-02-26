@@ -1,5 +1,5 @@
 import { PitchData } from './pitch';
-import { usePitchTracker } from './audio/usePitchTracker';
+import { usePitchTracker, RecordingProfile } from './audio/usePitchTracker';
 import { useVocalRecorder } from './audio/useVocalRecorder';
 import { useBackingTrack } from './audio/useBackingTrack';
 
@@ -9,7 +9,16 @@ export type ListenMode = 'idle' | 'vocal' | 'piano';
  * Facade hook that combines pitch tracking, vocal recording, and backing track playback.
  * It delegates the actual work to single-responsibility hooks inside the 'audio' folder.
  */
-export function useAudioEngine(a4: number = 440, onPitchUpdate?: (pitch: PitchData | null) => void, isStudioMode: boolean = false) {
+export function useAudioEngine(
+    a4: number = 440,
+    onPitchUpdate?: (pitch: PitchData | null) => void,
+    isStudioMode: boolean = false,
+    isCloseMic: boolean = false,
+    recordingProfile: RecordingProfile = 'part'
+) {
+    // 0.01 is roughly 5x the normal threshold (0.002), creating a very tight proximity bubble.
+    const customThreshold = isCloseMic ? 0.01 : undefined;
+
     const {
         listenMode,
         isListening,
@@ -21,7 +30,7 @@ export function useAudioEngine(a4: number = 440, onPitchUpdate?: (pitch: PitchDa
         audioContextRef,
         streamRef,
         processedStreamRef
-    } = usePitchTracker(a4, onPitchUpdate);
+    } = usePitchTracker(a4, onPitchUpdate, customThreshold, recordingProfile);
     const {
         isRecording,
         startRecording,

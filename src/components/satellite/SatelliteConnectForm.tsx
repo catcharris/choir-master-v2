@@ -24,7 +24,7 @@ export function SatelliteConnectForm({
     return (
         <main className="h-[100dvh] w-full fixed inset-0 overflow-hidden bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6 sm:p-8">
             {/* Home Navigation */}
-            <div className="absolute top-6 left-6 z-20">
+            <div className="absolute top-6 left-6 z-[9999] pointer-events-auto">
                 <Link href="/" className="flex items-center justify-center w-12 h-12 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-2xl backdrop-blur-md transition-all border border-white/5 hover:border-white/20">
                     <Home size={20} />
                 </Link>
@@ -33,7 +33,7 @@ export function SatelliteConnectForm({
             {/* Cinematic Background Glow */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[60%] bg-indigo-600/15 blur-[100px] rounded-[100%] pointer-events-none" />
 
-            <div className="w-full max-w-sm relative z-10 bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-8 shadow-2xl">
+            <div className="w-full max-w-sm relative z-[9999] bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-8 shadow-2xl pointer-events-auto">
                 <div className="flex justify-center mb-6 relative">
                     <div className="absolute inset-0 bg-indigo-500/30 blur-xl rounded-full animate-pulse" />
                     <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-2xl flex items-center justify-center relative shadow-lg">
