@@ -22,6 +22,7 @@ import { Presentation, LogOut, Trash2 } from 'lucide-react';
 export default function MasterPage() {
     const [roomId, setRoomId] = useState('');
     const [isRecordingMaster, setIsRecordingMaster] = useState(false);
+    const [masterPage, setMasterPage] = useState(0);
     const handleMasterCommand = useCallback((action: string, payload: any) => {
         if (action === 'SCORE_SYNC' && payload?.urls) {
             setScoreUrls(payload.urls);
@@ -37,6 +38,16 @@ export default function MasterPage() {
         } else if (action === 'STOP_RECORD') {
             setIsRecordingMaster(false);
             toast.success('다른 마스터 기기에서 전체 녹음을 종료했습니다.', { duration: 3000 });
+        } else if (action === 'PAGE_SYNC' && payload?.page !== undefined) {
+            setMasterPage(payload.page);
+        } else if (action === 'CLEAR_ROOM') {
+            setScoreUrls([]);
+            setMrUrl(null);
+            setIsStudioMode(false);
+            setIsRecordingMaster(false);
+            setIsScoreModalOpen(false);
+            setMasterPage(0);
+            toast("다른 관리자가 방 데이터를 초기화했습니다.", { icon: "🧹", duration: 4000 });
         }
     }, []);
 
@@ -385,7 +396,11 @@ export default function MasterPage() {
                 isOpen={isScoreModalOpen}
                 onClose={() => setIsScoreModalOpen(false)}
                 scoreUrls={scoreUrls}
-                onPageSync={(pageIndex) => broadcastCommand('PAGE_SYNC', { page: pageIndex })}
+                currentPage={masterPage}
+                onPageSync={(pageIndex) => {
+                    setMasterPage(pageIndex);
+                    broadcastCommand('PAGE_SYNC', { page: pageIndex });
+                }}
             />
 
             {/* Maestro Cam Local Preview */}

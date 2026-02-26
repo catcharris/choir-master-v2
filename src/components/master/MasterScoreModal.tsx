@@ -6,6 +6,7 @@ interface MasterScoreModalProps {
     isOpen: boolean;
     onClose: () => void;
     scoreUrls: string[];
+    currentPage: number;
     onPageSync: (pageIndex: number) => void;
 }
 
@@ -14,9 +15,10 @@ export function MasterScoreModal({
     isOpen,
     onClose,
     scoreUrls,
+    currentPage,
     onPageSync
 }: MasterScoreModalProps) {
-    const [currentIndex, setCurrentIndex] = useState(0);
+    const [currentIndex, setCurrentIndex] = useState(currentPage);
 
     // Keyboard support for Bluetooth Pedals (PageTurners)
     useEffect(() => {
@@ -36,18 +38,22 @@ export function MasterScoreModal({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isOpen, currentIndex, scoreUrls.length]); // Rebind when index changes so handleNext has latest state
 
-    // Sync on open or when urls array changes length if currentIndex is out of bounds
+    // Sync on open or when external currentPage changes from another Master
     useEffect(() => {
         if (isOpen && scoreUrls.length > 0) {
-            if (currentIndex >= scoreUrls.length) {
-                setCurrentIndex(scoreUrls.length - 1);
-                onPageSync(scoreUrls.length - 1);
+            if (currentPage >= scoreUrls.length) {
+                const maxPageIndex = scoreUrls.length - 1;
+                setCurrentIndex(maxPageIndex);
+                if (currentPage !== maxPageIndex) {
+                    onPageSync(maxPageIndex);
+                }
             } else {
-                // Ensure satellites catch up when it opens
-                onPageSync(currentIndex);
+                setCurrentIndex(currentPage);
+                // Trigger a sync broadast just to ensure satellites are completely aligned when opening
+                onPageSync(currentPage);
             }
         }
-    }, [isOpen, scoreUrls.length]);
+    }, [isOpen, scoreUrls.length, currentPage]);
 
     if (!isOpen) return null;
 

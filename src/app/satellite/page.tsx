@@ -127,7 +127,7 @@ export default function SatellitePage() {
             setScoreUrls([]);
             setIsScoreOpen(false);
             setIsStudioMode(false);
-            toast("지휘자가 방을 초기화하고 종료했습니다.\n(새로운 악보와 반주를 기다립니다)", { icon: "🧹", duration: 5000 });
+            toast("마스터가 방을 초기화했습니다.\n(새로운 악보와 반주를 기다립니다)", { icon: "🧹", duration: 3000 });
         }
     }, [startRecording, stopRecording, getRecordedBlob, roomId, partName, preloadBackingTrack, playBackingTrack, stopBackingTrack, isMrReady, isSoloRecording]);
 
