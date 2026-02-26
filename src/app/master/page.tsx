@@ -10,6 +10,7 @@ import { uploadBackingTrack, fetchLatestBackingTrack } from '@/lib/backingTrackU
 import { uploadScoreImages, fetchLatestScores } from '@/lib/scoreUtils';
 import { detectChord } from '@/lib/chordDetector';
 import { clearRoomData } from '@/lib/clearRoomData';
+import { useBackingTrack } from '@/lib/audio/useBackingTrack';
 
 import { MasterHeader } from '@/components/master/MasterHeader';
 import { SatelliteGrid, SatelliteData } from '@/components/master/SatelliteGrid';
@@ -22,7 +23,11 @@ import { Presentation, LogOut, Trash2 } from 'lucide-react';
 export default function MasterPage() {
     const [roomId, setRoomId] = useState('');
     const [isRecordingMaster, setIsRecordingMaster] = useState(false);
-    const audioRef = useRef<HTMLAudioElement | null>(null);
+
+    // WebAudio context for perfectly synced MR playback
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const { preloadBackingTrack, playBackingTrack, stopBackingTrack } = useBackingTrack(audioContextRef);
+
     const [masterPage, setMasterPage] = useState(0);
     const handleMasterCommand = useCallback((action: string, payload: any) => {
         if (action === 'SCORE_SYNC' && payload?.urls) {
@@ -141,22 +146,32 @@ export default function MasterPage() {
     const handleConnect = (e: React.FormEvent) => {
         e.preventDefault();
         if (!roomId.trim()) return;
+
+        // Initialize AudioContext on user gesture
+        if (!audioContextRef.current) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            audioContextRef.current = audioCtx;
+        }
+
         connect();
     };
 
-    // Phase 14-B: Master MR Playback Sync
-    // Ensure the MR plays locally on the Master device(s) when recording starts
+    // Phase 14-D: WebAudio MR Preloader
     useEffect(() => {
-        if (!audioRef.current) return;
-
-        if (isRecordingMaster && mrUrl) {
-            audioRef.current.currentTime = 0;
-            audioRef.current.play().catch(e => console.warn("Master MR playback failed (likely browser autoplay block):", e));
-        } else {
-            audioRef.current.pause();
-            audioRef.current.currentTime = 0;
+        if (mrUrl && isConnected) {
+            preloadBackingTrack(mrUrl);
         }
-    }, [isRecordingMaster, mrUrl]);
+    }, [mrUrl, isConnected, preloadBackingTrack]);
+
+    // Phase 14-B: Master MR Playback Sync (WebAudio 0-latency)
+    useEffect(() => {
+        if (isRecordingMaster && mrUrl) {
+            playBackingTrack();
+        } else {
+            stopBackingTrack();
+        }
+    }, [isRecordingMaster, mrUrl, playBackingTrack, stopBackingTrack]);
 
     // Phase 14: Late Joiner State Synchronization
     // If a choir member connects AFTER the master has uploaded a score, turned on Studio Mode,
@@ -345,7 +360,6 @@ export default function MasterPage() {
 
     return (
         <main className="min-h-[100dvh] bg-slate-950 text-slate-100 flex flex-col pt-safe-top pb-safe-bottom relative">
-            <audio ref={audioRef} src={mrUrl || undefined} preload="auto" className="hidden" />
             <MasterHeader
                 roomId={roomId}
                 satelliteCount={satelliteArray.length}
