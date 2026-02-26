@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { FileImage, Presentation, Link as LinkIcon, X } from 'lucide-react';
-import { Toaster } from 'react-hot-toast';
 
 interface SatelliteScoreModalProps {
     roomId: string;
@@ -42,19 +41,6 @@ export function SatelliteScoreModal({
 
     return (
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black backdrop-blur-md pb-safe">
-
-            {/* Custom Modal Toaster (Keeps toasts contained and styled for dark mode) */}
-            <div className="absolute inset-x-0 bottom-8 z-[110] flex justify-center pointer-events-none modal-toast-container">
-                <style>{`
-                    .modal-toast-container .go3958317564 { /* react-hot-toast class override */
-                        background: rgba(15, 23, 42, 0.95) !important;
-                        color: white !important;
-                        border: 1px solid rgba(255,255,255,0.1);
-                        backdrop-filter: blur(12px);
-                    }
-                `}</style>
-                <Toaster position="bottom-center" />
-            </div>
 
             {/* Top Indicator & Sync Button */}
             {!isSynced && (
