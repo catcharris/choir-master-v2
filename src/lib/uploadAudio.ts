@@ -1,7 +1,7 @@
 import { supabase } from './supabaseClient';
 import toast from 'react-hot-toast';
 
-export async function uploadAudioBlob(blob: Blob, roomId: string, partName: string) {
+export async function uploadAudioBlob(blob: Blob, roomId: string, partName: string, offsetMs: number = 1500) {
     if (!blob || blob.size === 0) {
         console.error("Cannot upload empty audio blob.");
         return null;
@@ -19,7 +19,8 @@ export async function uploadAudioBlob(blob: Blob, roomId: string, partName: stri
         const safeRoomId = b64EncodeUnicode(roomId.trim()).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
         const safePartName = b64EncodeUnicode(partName.trim()).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
         const timestamp = Date.now();
-        const fileName = `${safeRoomId}/${safePartName}_${timestamp}.${extension}`;
+        const safeOffset = Math.round(offsetMs);
+        const fileName = `${safeRoomId}/${safePartName}_${timestamp}_offset_${safeOffset}.${extension}`;
 
         const { data, error } = await supabase.storage
             .from('practice_tracks')

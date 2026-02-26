@@ -89,7 +89,7 @@ export async function mixdownTracks(
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
 
     // 1. Fetch and decode all audio
-    const buffers: { buffer: AudioBuffer, trackId: string }[] = [];
+    const buffers: { buffer: AudioBuffer, trackId: string, offsetSec: number }[] = [];
 
     // 1(a). Fetch MR if provided
     if (mrUrl) {
@@ -98,7 +98,7 @@ export async function mixdownTracks(
             if (response.ok) {
                 const arrayBuffer = await response.arrayBuffer();
                 const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-                buffers.push({ buffer: audioBuffer, trackId: '__mr__' });
+                buffers.push({ buffer: audioBuffer, trackId: '__mr__', offsetSec: 0 });
             }
         } catch (err) {
             console.error("Failed to include MR in mixdown:", err);
@@ -115,16 +115,14 @@ export async function mixdownTracks(
 
         // Decode the Opus/WebM/MP4 data into raw PCM AudioBuffer
         const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-        buffers.push({ buffer: audioBuffer, trackId: track.id });
+        const offsetSec = (track.offsetMs || 0) / 1000;
+        buffers.push({ buffer: audioBuffer, trackId: track.id, offsetSec });
     }
 
     // 2. Determine longest track to set canvas duration
     let maxDuration = 0;
     for (const b of buffers) {
-        let trackDuration = b.buffer.duration;
-        if (b.trackId === '__mr__') {
-            trackDuration += START_RECORD_DELAY_SEC; // Accounts for offset
-        }
+        let trackDuration = b.buffer.duration + b.offsetSec;
         if (trackDuration > maxDuration) {
             maxDuration = trackDuration;
         }
@@ -207,14 +205,10 @@ export async function mixdownTracks(
         trackGain.connect(trackPan);
         trackPan.connect(masterOut);
 
-        // Satellites start exactly at 0.0 because the MediaRecorder was delayed by 1.5s
-        // Therefore, the MR (which is the absolute truth timeline t=0) must be pushed right by +1.5s
-        // so it perfectly aligns with the beginning of the satellite Blob.
-        if (b.trackId === '__mr__') {
-            source.start(START_RECORD_DELAY_SEC);
-        } else {
-            source.start(0);
-        }
+        // Each hardware device starts capturing at a different absolute time.
+        // We delay each individual track inside the mixdown by its precise telemetry `offsetMs`
+        // so it perfectly aligns against the MR which acts as absolute Timeline 0.0.
+        source.start(b.offsetSec);
     }
 
     // 6. Render entire batch instantly
