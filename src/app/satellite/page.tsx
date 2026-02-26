@@ -8,6 +8,8 @@ import { uploadAudioBlob } from '@/lib/uploadAudio';
 import { RadioReceiver, AlertCircle, Mic, Video } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useMaestroCamSatellite } from '@/lib/webrtc/useMaestroCamSatellite';
+import { fetchLatestBackingTrack } from '@/lib/backingTrackUtils';
+import { fetchLatestScores } from '@/lib/scoreUtils';
 
 import { SatelliteConnectForm } from '@/components/satellite/SatelliteConnectForm';
 import { TunerDisplay } from '@/components/satellite/TunerDisplay';
@@ -143,6 +145,37 @@ export default function SatellitePage() {
     }, [broadcastPitch]);
 
     const isConnected = wsStatus === 'connected';
+
+    // Phase 14-C: Late Joiner / Offline Master Self-Hydration
+    // If a satellite joins the room and the Master is closed/refreshed/offline,
+    // the Master won't be able to broadcast PRELOAD_MR. Satellites must fetch it themselves.
+    useEffect(() => {
+        if (isConnected && roomId) {
+            fetchLatestBackingTrack(roomId).then(async url => {
+                if (url) {
+                    setMrUrl(url);
+                    try {
+                        const { success, error } = await preloadBackingTrack(url);
+                        if (success) {
+                            setIsMrReady(true);
+                        } else {
+                            setMrError(error || "알 수 없는 다운로드 에러");
+                        }
+                    } catch (e) {
+                        console.error("MR Load error on reconnect:", e);
+                        setMrError("MR 다운로드 실패");
+                    }
+                }
+            });
+
+            fetchLatestScores(roomId).then(urls => {
+                if (urls.length > 0) {
+                    setScoreUrls(urls);
+                    setCurrentPage(0);
+                }
+            });
+        }
+    }, [isConnected, roomId, preloadBackingTrack]);
 
     // Phase 13: Maestro Cam 1:N WebRTC Receiver (Global)
     // Passed `isConnected` to ensure we don't spam Supabase during Room ID typing
