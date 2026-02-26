@@ -98,7 +98,7 @@ export default function SatellitePage() {
                     clearRecordedBlob(); // Prevents multiple upload triggers from queued intervals
 
                     console.log("Blob ready! Uploading to Supabase...");
-                    const path = await uploadAudioBlob(blob, roomId, partName, 0);
+                    const path = await uploadAudioBlob(blob, roomId, partName, -100);
                     if (path) {
                         console.log("Upload successful:", path);
                         toast.success("마스터 녹음이 파일 서버로 전송되었습니다.", { duration: 4000 });
