@@ -11,9 +11,10 @@ export interface SatelliteData {
 interface SatelliteGridProps {
     roomId: string;
     satellites: SatelliteData[];
+    viewMode?: 'conductor' | 'manager';
 }
 
-export function SatelliteGrid({ roomId, satellites }: SatelliteGridProps) {
+export function SatelliteGrid({ roomId, satellites, viewMode = 'conductor' }: SatelliteGridProps) {
     const [selectedPart, setSelectedPart] = useState<string | null>(null);
 
     // Derived state so it stays perfectly synced with real-time prop updates
@@ -36,7 +37,13 @@ export function SatelliteGrid({ roomId, satellites }: SatelliteGridProps) {
     let titleSize = "text-lg sm:text-xl";
     let pitchSize = "text-[2rem] sm:text-[3rem]";
 
-    if (count > 24) {
+    if (viewMode === 'manager') {
+        // Tech Mode: Extremely dense packing
+        gridCols = "grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 sm:gap-3";
+        cardPadding = "p-2";
+        titleSize = "text-xs font-bold";
+        pitchSize = "text-xl sm:text-2xl font-black";
+    } else if (count > 24) {
         // Massive choir mode (25~50+)
         gridCols = "grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 sm:gap-3";
         cardPadding = "p-2 sm:p-3";

@@ -350,6 +350,7 @@ export default function MasterPage() {
                 <SatelliteGrid
                     roomId={roomId}
                     satellites={satelliteArray}
+                    viewMode={viewMode}
                 />
             </div>
 
