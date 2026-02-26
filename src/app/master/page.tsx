@@ -16,7 +16,7 @@ import { RecordingsDrawer } from '@/components/master/RecordingsDrawer';
 import { MasterScoreModal } from '@/components/master/MasterScoreModal';
 import { PracticeListBookmark } from '@/components/master/PracticeListBookmark';
 import { ManagerConsole } from '@/components/master/ManagerConsole';
-import { MetronomeControl } from '@/components/master/MetronomeControl';
+import { Presentation } from 'lucide-react';
 
 export default function MasterPage() {
     const [roomId, setRoomId] = useState('');
@@ -304,6 +304,7 @@ export default function MasterPage() {
                 onSwitchMode={setViewMode}
                 isStudioMode={isStudioMode}
                 onToggleStudioMode={handleToggleStudioMode}
+                activeChord={activeChord}
             />
 
             {/* Manager Console overlay (only visible in Manager tab) */}
@@ -367,22 +368,15 @@ export default function MasterPage() {
                 </div>
             )}
 
-            {/* Floating Conductor Controls (Bottom Left) */}
-            {viewMode === 'conductor' && (
-                <div className="fixed bottom-6 left-6 z-40 flex flex-col gap-3 pointer-events-auto">
-                    {/* Harmony monitor */}
-                    <div className={`flex items-center justify-center h-[52px] px-5 rounded-2xl font-bold transition-colors duration-500 border shadow-2xl backdrop-blur-md ${activeChord ? 'bg-amber-500/20 text-amber-400 border-amber-500/40' : 'bg-slate-900/80 text-slate-500 border-slate-700/50'}`}>
-                        <span className="text-[11px] md:text-sm uppercase tracking-widest opacity-80 mt-0.5 mr-3">Harmony</span>
-                        <span className="text-lg sm:text-xl font-black whitespace-nowrap min-w-[34px] text-center tracking-tighter">
-                            {activeChord ? activeChord.name : '---'}
-                        </span>
-                    </div>
-
-                    {/* Metronome */}
-                    <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden p-2">
-                        <MetronomeControl />
-                    </div>
-                </div>
+            {/* Floating View Score Button (Bottom Left) */}
+            {scoreUrls.length > 0 && viewMode === 'conductor' && (
+                <button
+                    onClick={() => setIsScoreModalOpen(true)}
+                    className="fixed bottom-6 left-6 z-40 flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-4 rounded-full shadow-2xl transition-all hover:scale-105 active:scale-95 group border border-emerald-400/50 pointer-events-auto"
+                >
+                    <Presentation size={24} className="group-hover:animate-pulse" />
+                    <span className="text-lg font-bold">악보 열람</span>
+                </button>
             )}
 
             {/* Floating Bookmark for Today's Songs */}

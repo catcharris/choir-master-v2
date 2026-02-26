@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Home, SignalHigh, Users, FolderOpen, LogOut, Music, FileImage, Video, VideoOff, Presentation } from 'lucide-react';
+import { MetronomeControl } from './MetronomeControl';
 import { DetectedChord } from '@/lib/chordDetector';
 
 interface MasterHeaderProps {
@@ -22,6 +23,7 @@ interface MasterHeaderProps {
     onSwitchMode: (mode: 'conductor' | 'manager') => void;
     isStudioMode: boolean;
     onToggleStudioMode: () => void;
+    activeChord: DetectedChord | null;
 }
 
 export function MasterHeader({
@@ -43,7 +45,8 @@ export function MasterHeader({
     viewMode,
     onSwitchMode,
     isStudioMode,
-    onToggleStudioMode
+    onToggleStudioMode,
+    activeChord
 }: MasterHeaderProps) {
     return (
         <header className="px-4 sm:px-6 py-3 sm:py-4 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 sm:gap-4 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-10 transition-colors duration-500">
@@ -112,16 +115,17 @@ export function MasterHeader({
                 {/* ---------- CONDUCTOR TAB ---------- */}
                 {viewMode === 'conductor' && (
                     <div className="flex items-center gap-2 xl:gap-3 w-full xl:w-auto overflow-x-auto hide-scrollbar pb-1 xl:pb-0 shrink-0">
-                        {/* View Score Button */}
-                        {hasScore && (
-                            <button
-                                onClick={onOpenScore}
-                                className="flex shrink-0 items-center justify-center h-[36px] gap-2 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-emerald-500/20"
-                            >
-                                <Presentation size={16} />
-                                <span className="hidden sm:inline">악보 열람</span>
-                            </button>
-                        )}
+                        {/* Harmony Analysis Monitor (Conductor only) */}
+                        <div className={`flex items-center justify-center h-[36px] w-[calc(50%-0.25rem)] xl:max-w-none xl:w-auto shrink-0 gap-1 sm:gap-2 px-2 sm:px-3 rounded-xl font-bold transition-colors duration-500 border ${activeChord ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-inner' : 'bg-slate-800 text-slate-500 border-slate-700/50 shadow-sm'}`}>
+                            <span className="text-[10px] md:text-xs uppercase tracking-widest opacity-80 mt-0.5">Harmony</span>
+                            <span className="text-sm sm:text-base font-black whitespace-nowrap min-w-[30px] sm:min-w-[34px] text-center tracking-tighter">
+                                {activeChord ? activeChord.name : '---'}
+                            </span>
+                        </div>
+
+                        <div className="w-[calc(50%-0.25rem)] max-w-[180px] xl:max-w-none xl:w-auto shrink-0 flex items-center justify-center">
+                            <MetronomeControl className="w-full" />
+                        </div>
                     </div>
                 )}
             </div>
