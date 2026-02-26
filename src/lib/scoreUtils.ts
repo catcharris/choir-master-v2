@@ -38,12 +38,16 @@ export async function uploadScoreImages(files: FileList | File[], roomId: string
             }
         }
 
+        // Convert to Array and sort numerically/alphabetically by original filename
+        const fileArray = Array.from(files).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
         const uploadedUrls: string[] = [];
 
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
+        for (let i = 0; i < fileArray.length; i++) {
+            const file = fileArray[i];
             const fileExt = file.name.split('.').pop() || 'png';
-            const fileName = `page_${i + 1}_${Date.now()}.${fileExt}`;
+            // Pad the index (e.g., page_001, page_002) so alphabetical sorting by name works perfectly
+            const fileName = `page_${String(i + 1).padStart(3, '0')}_${Date.now()}.${fileExt}`;
             const filePath = `${safeRoomId}_scores/${fileName}`;
 
             const { data, error } = await supabase.storage
@@ -92,7 +96,7 @@ export async function fetchLatestScores(roomId: string): Promise<string[]> {
                 .list(folderPath, {
                     limit: 100,
                     offset: offset,
-                    sortBy: { column: 'created_at', order: 'asc' }
+                    sortBy: { column: 'name', order: 'asc' }
                 });
 
             if (error || !data) {
