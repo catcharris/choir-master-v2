@@ -16,13 +16,13 @@ export function useMaestroCamMaster(roomId: string) {
 
     const startCamera = async () => {
         try {
-            // Reverting to the original standard HD 640x480 to support the small floating PIP.
-            // Keeping 60fps for smooth motion tracking.
+            // Optimized for ultra-low latency. Since the satellite renders a tiny ~160px PIP,
+            // 320x240 at 30fps is more than enough and drastically cuts encoding/transmission time.
             const mediaStream = await navigator.mediaDevices.getUserMedia({
                 video: {
-                    width: { ideal: 640 },
-                    height: { ideal: 480 },
-                    frameRate: { ideal: 60, min: 30 }
+                    width: { ideal: 320 },
+                    height: { ideal: 240 },
+                    frameRate: { ideal: 30, max: 30 }
                 },
                 audio: false // No audio needed, maestro just conducts
             });
