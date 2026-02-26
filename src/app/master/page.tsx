@@ -85,44 +85,52 @@ export default function MasterPage() {
                 {/* Cinematic Background Glow */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[60%] bg-indigo-600/15 blur-[100px] rounded-[100%] pointer-events-none" />
 
-                <div className="w-full max-w-sm relative z-[9999] bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-8 shadow-2xl pointer-events-auto">
-                    <div className="flex justify-center mb-6 relative">
-                        <div className="absolute inset-0 bg-indigo-500/30 blur-xl rounded-full animate-pulse" />
-                        <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-2xl flex items-center justify-center relative shadow-lg">
-                            <LayoutGrid size={32} />
+                {/* Side-by-side on md (tablet), stacked on mobile */}
+                <div className="w-full max-w-4xl relative z-[9999] flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 pointer-events-auto">
+
+                    {/* Left Side: Title and Icon */}
+                    <div className="flex flex-col items-center md:items-start text-center md:text-left">
+                        <div className="flex justify-center md:justify-start mb-6 relative">
+                            <div className="absolute inset-0 bg-indigo-500/30 blur-xl rounded-full animate-pulse" />
+                            <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-2xl flex items-center justify-center relative shadow-lg">
+                                <LayoutGrid size={32} />
+                            </div>
+                        </div>
+
+                        <div className="mb-6 md:mb-0">
+                            <h1 className="text-3xl md:text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">지휘자 마스터 뷰</h1>
+                            <p className="text-slate-400 text-base md:text-lg mt-4 leading-relaxed max-w-sm">
+                                합창단원(위성)들의 스마트폰에서 송신하는<br className="hidden md:block" />실시간 음정 데이터를 모니터링합니다.
+                            </p>
                         </div>
                     </div>
 
-                    <div className="text-center mb-10">
-                        <h1 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">지휘자 마스터 뷰</h1>
-                        <p className="text-slate-400 text-sm mt-2 leading-relaxed">
-                            합창단원(위성)들의 스마트폰에서 송신하는<br />실시간 음정 데이터를 모니터링합니다.
-                        </p>
+                    {/* Right Side: Form Box */}
+                    <div className="w-full max-w-sm bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-8 shadow-2xl">
+                        <form onSubmit={handleConnect} className="space-y-5">
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Room Code</label>
+                                <input
+                                    type="text"
+                                    placeholder="예: 9876"
+                                    value={roomId}
+                                    onChange={(e) => setRoomId(e.target.value)}
+                                    className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-xl font-bold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600 placeholder:font-normal"
+                                    required
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={wsStatus === 'connecting'}
+                                className="w-full mt-6 bg-white/10 hover:bg-indigo-600 text-white disabled:opacity-50 font-bold text-lg py-4 rounded-2xl transition-all shadow-lg active:scale-[0.98] relative overflow-hidden group border border-white/10 hover:border-indigo-400/50"
+                            >
+                                {/* Hover flare effect */}
+                                <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12" />
+                                <span className="relative z-10">{wsStatus === 'connecting' ? '방 생성 중...' : '마스터 뷰 열람하기'}</span>
+                            </button>
+                        </form>
                     </div>
-
-                    <form onSubmit={handleConnect} className="space-y-5">
-                        <div className="space-y-1.5">
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Room Code</label>
-                            <input
-                                type="text"
-                                placeholder="예: 9876"
-                                value={roomId}
-                                onChange={(e) => setRoomId(e.target.value)}
-                                className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-xl font-bold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600 placeholder:font-normal"
-                                required
-                            />
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={wsStatus === 'connecting'}
-                            className="w-full mt-6 bg-white/10 hover:bg-indigo-600 text-white disabled:opacity-50 font-bold text-lg py-4 rounded-2xl transition-all shadow-lg active:scale-[0.98] relative overflow-hidden group border border-white/10 hover:border-indigo-400/50"
-                        >
-                            {/* Hover flare effect */}
-                            <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12" />
-                            <span className="relative z-10">{wsStatus === 'connecting' ? '방 생성 중...' : '마스터 뷰 열람하기'}</span>
-                        </button>
-                    </form>
                 </div>
 
                 {/* Safe area footer spacer */}

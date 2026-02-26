@@ -2,7 +2,7 @@ import React from 'react';
 import { useMetronome, TimeSignature } from '@/lib/audio/useMetronome';
 import { Play, Square, Minus, Plus } from 'lucide-react';
 
-export function MetronomeControl() {
+export function MetronomeControl({ className = '' }: { className?: string }) {
     const { isPlaying, toggle, bpm, setBpm, timeSignature, setTimeSignature } = useMetronome();
 
     const handleBpmChange = (delta: number) => {
@@ -21,7 +21,7 @@ export function MetronomeControl() {
     };
 
     return (
-        <div className={`flex items-center h-[36px] px-1 sm:px-1.5 rounded-xl transition-all shadow-lg ${isPlaying ? 'bg-indigo-900/40 border border-indigo-500/30' : 'bg-slate-800 border border-slate-700'}`}>
+        <div className={`flex items-center justify-between sm:justify-center h-[36px] px-1 sm:px-1.5 rounded-xl transition-all shadow-lg ${isPlaying ? 'bg-indigo-900/40 border border-indigo-500/30' : 'bg-slate-800 border border-slate-700'} ${className}`}>
 
             {/* Time Signature Button */}
             <button
