@@ -72,11 +72,27 @@ export default function MasterPage() {
         // Clear all stored data from Supabase
         await clearRoomData(roomId);
 
+        // Clear local UI state so it doesn't linger or bleed
+        setMrUrl(null);
+        setScoreUrls([]);
+        setIsStudioMode(false);
+        setIsRecordingMaster(false);
+        setIsScoreModalOpen(false);
+        if (isCamActive) stopCamera();
+
         setIsDisconnectModalOpen(false);
         disconnect();
     };
 
     const handleJustDisconnect = () => {
+        // Clear local UI state to prevent cross-room bleed
+        setMrUrl(null);
+        setScoreUrls([]);
+        setIsStudioMode(false);
+        setIsRecordingMaster(false);
+        setIsScoreModalOpen(false);
+        if (isCamActive) stopCamera();
+
         setIsDisconnectModalOpen(false);
         disconnect();
     };

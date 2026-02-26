@@ -85,17 +85,19 @@ export function SatelliteGrid({ roomId, satellites, viewMode = 'conductor' }: Sa
                             {sat.connected && <div className={`absolute top-0 right-0 w-32 h-32 blur-[60px] rounded-full opacity-30 pointer-events-none transition-colors duration-500 ${isStable ? 'bg-green-500' : p?.cents && p.cents > 0 ? 'bg-rose-500' : p?.cents && p.cents < 0 ? 'bg-blue-500' : 'bg-indigo-500'}`} />}
 
                             <div className={`flex justify-start items-start z-10 w-full ${count > 24 ? 'mb-1' : 'mb-2'}`}>
-                                <div className="flex-1 min-w-0 pr-16">
+                                <div className="flex-1 min-w-0 pr-2">
                                     <h2 className={`${titleSize} font-black text-transparent bg-clip-text bg-gradient-to-br from-white to-slate-400 leading-tight truncate`}>{sat.part}</h2>
                                 </div>
-                                {p ? (
-                                    <span className={`absolute top-3 right-3 sm:top-4 sm:right-4 flex-shrink-0 text-[8px] sm:text-[9px] font-black tracking-wider px-2 py-1 rounded-full text-center transition-colors duration-300 shadow-inner border max-w-min whitespace-nowrap ${isStable ? 'bg-green-500/20 text-green-400 border-green-500/30 shadow-green-500/10' : 'bg-slate-800/80 text-slate-300 border-slate-700 shadow-black/20'}`}>
-                                        {isStable ? 'PERFECT' : 'ADJUST'}
-                                    </span>
-                                ) : (
-                                    <span className="absolute top-3 right-3 sm:top-4 sm:right-4 flex-shrink-0 text-[8px] sm:text-[9px] font-bold px-2 py-1 rounded bg-slate-800 text-slate-500 whitespace-nowrap">
-                                        {sat.connected ? 'LISTENING' : 'WAITING'}
-                                    </span>
+                                {viewMode !== 'manager' && (
+                                    p ? (
+                                        <span className={`absolute top-3 right-3 sm:top-4 sm:right-4 flex-shrink-0 text-[8px] sm:text-[9px] font-black tracking-wider px-2 py-1 rounded-full text-center transition-colors duration-300 shadow-inner border max-w-min whitespace-nowrap ${isStable ? 'bg-green-500/20 text-green-400 border-green-500/30 shadow-green-500/10' : 'bg-slate-800/80 text-slate-300 border-slate-700 shadow-black/20'}`}>
+                                            {isStable ? 'PERFECT' : 'ADJUST'}
+                                        </span>
+                                    ) : (
+                                        <span className="absolute top-3 right-3 sm:top-4 sm:right-4 flex-shrink-0 text-[8px] sm:text-[9px] font-bold px-2 py-1 rounded bg-slate-800 text-slate-500 whitespace-nowrap">
+                                            {sat.connected ? 'LISTENING' : 'WAITING'}
+                                        </span>
+                                    )
                                 )}
                             </div>
 
@@ -110,18 +112,20 @@ export function SatelliteGrid({ roomId, satellites, viewMode = 'conductor' }: Sa
                                                 {p.cents > 0 ? '+' : ''}{p.cents}
                                             </span>
                                         </div>
-                                        {count <= 24 && (
+                                        {count <= 24 && viewMode !== 'manager' && (
                                             <div className="text-slate-400 font-mono mt-1 text-[10px] sm:text-sm">
                                                 {p.frequency.toFixed(1)} Hz
                                             </div>
                                         )}
                                     </>
                                 ) : (
-                                    <div className={`text-slate-500 font-medium flex flex-col items-center justify-center h-full ${count > 24 ? 'gap-1' : 'gap-2'}`}>
-                                        <Activity size={count > 24 ? 16 : 24} className={sat.connected ? 'animate-pulse text-indigo-400/50' : 'opacity-20'} />
-                                        <span className={`${count > 24 ? 'text-[9px]' : 'text-[11px] sm:text-xs'}`}>
-                                            {count <= 24 && (sat.connected ? '수음 중...' : '신호 대기')}
-                                        </span>
+                                    <div className={`text-slate-500 font-medium flex flex-col items-center justify-center h-full ${count > 24 || viewMode === 'manager' ? 'gap-1' : 'gap-2'}`}>
+                                        <Activity size={count > 24 || viewMode === 'manager' ? 16 : 24} className={sat.connected ? 'animate-pulse text-indigo-400/50' : 'opacity-20'} />
+                                        {viewMode !== 'manager' && (
+                                            <span className={`${count > 24 ? 'text-[9px]' : 'text-[11px] sm:text-xs'}`}>
+                                                {count <= 24 && (sat.connected ? '수음 중...' : '신호 대기')}
+                                            </span>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -140,7 +144,7 @@ export function SatelliteGrid({ roomId, satellites, viewMode = 'conductor' }: Sa
                                     />
                                 )}
                             </div>
-                            {count <= 24 && (
+                            {count <= 24 && viewMode !== 'manager' && (
                                 <div className="flex justify-between text-[8px] sm:text-[9px] text-slate-500 font-bold mt-2 opacity-60 tracking-widest z-10">
                                     <span>FLAT</span>
                                     <span>PERFECT</span>
