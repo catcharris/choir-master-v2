@@ -43,7 +43,7 @@ export default function MasterPage() {
             // Store the scheduled start time in a ref or state if needed, or just set it
             setIsRecordingMaster(true);
             setTimeout(() => {
-                if (mrUrl) playBackingTrack();
+                if (mrUrl) playBackingTrack(isMrMutedRef.current ? 0 : 1);
             }, Math.max(0, targetTime - Date.now()));
             toast('다른 마스터 기기에서 전체 녹음을 시작했습니다.', { icon: '🔴' });
         } else if (action === 'STOP_RECORD') {
@@ -85,6 +85,11 @@ export default function MasterPage() {
 
     // Mute MR Toggle
     const [isMrMuted, setIsMrMuted] = useState(false);
+    const isMrMutedRef = useRef(isMrMuted);
+    useEffect(() => {
+        isMrMutedRef.current = isMrMuted;
+    }, [isMrMuted]);
+
     const handleToggleMrMute = () => {
         setIsMrMuted(prev => {
             const next = !prev;
@@ -364,7 +369,7 @@ export default function MasterPage() {
             toast('합창단 전체 동기화 녹음 시작', { icon: '🔴', duration: 3000 });
 
             // For the Conductor/Master who clicked the button: play the MR instantly for them
-            if (mrUrl) playBackingTrack();
+            if (mrUrl) playBackingTrack(isMrMutedRef.current ? 0 : 1);
         }
     };
 

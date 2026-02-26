@@ -52,7 +52,7 @@ export function useBackingTrack(audioContextRef: React.MutableRefObject<AudioCon
         }
     }, [audioContextRef]);
 
-    const playBackingTrack = useCallback(() => {
+    const playBackingTrack = useCallback((initialVolume: number = 1) => {
         if (!audioContextRef.current || !mrBufferRef.current) return false;
 
         try {
@@ -71,6 +71,7 @@ export function useBackingTrack(audioContextRef: React.MutableRefObject<AudioCon
             source.buffer = mrBufferRef.current;
 
             const gainNode = audioContextRef.current.createGain();
+            gainNode.gain.value = initialVolume;
             mrGainRef.current = gainNode;
 
             source.connect(gainNode);
