@@ -17,11 +17,13 @@ export function SatelliteScoreModal({
     onClose
 }: SatelliteScoreModalProps) {
     const [localPage, setLocalPage] = useState(masterPage);
+    const [prevMasterPage, setPrevMasterPage] = useState(masterPage);
 
-    // Auto-snap to master page when master broadcasts a new page turn
-    useEffect(() => {
+    // Render-phase state update: Auto-snap to master page immediately without DOM flickering
+    if (masterPage !== prevMasterPage) {
+        setPrevMasterPage(masterPage);
         setLocalPage(masterPage);
-    }, [masterPage]);
+    }
 
     if (!isOpen) return null;
 
