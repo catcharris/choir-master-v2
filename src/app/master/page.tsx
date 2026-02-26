@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useMasterSubscriber } from '@/lib/useMasterSubscriber';
 import { LayoutGrid, Home } from 'lucide-react';
@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import { useMaestroCamMaster } from '@/lib/webrtc/useMaestroCamMaster';
 import { fetchRoomTracks, PracticeTrack } from '@/lib/storageUtils';
 import { uploadBackingTrack, fetchLatestBackingTrack } from '@/lib/backingTrackUtils';
-import { uploadScoreImages } from '@/lib/scoreUtils';
+import { uploadScoreImages, fetchLatestScores } from '@/lib/scoreUtils';
 import { detectChord } from '@/lib/chordDetector';
 
 import { MasterHeader } from '@/components/master/MasterHeader';
@@ -15,11 +15,31 @@ import { SatelliteGrid, SatelliteData } from '@/components/master/SatelliteGrid'
 import { RecordingsDrawer } from '@/components/master/RecordingsDrawer';
 import { MasterScoreModal } from '@/components/master/MasterScoreModal';
 import { PracticeListBookmark } from '@/components/master/PracticeListBookmark';
+import { ManagerConsole } from '@/components/master/ManagerConsole';
+import { MetronomeControl } from '@/components/master/MetronomeControl';
 
 export default function MasterPage() {
     const [roomId, setRoomId] = useState('');
     const [isRecordingMaster, setIsRecordingMaster] = useState(false);
-    const { status: wsStatus, satellites, connect, disconnect, broadcastCommand } = useMasterSubscriber(roomId);
+    const handleMasterCommand = useCallback((action: string, payload: any) => {
+        if (action === 'SCORE_SYNC' && payload?.urls) {
+            setScoreUrls(payload.urls);
+            toast.success(`다른 마스터 기기에서 악보 ${payload.urls.length}장을 업로드했습니다.`, { duration: 4000 });
+        } else if (action === 'PRELOAD_MR' && payload?.url) {
+            setMrUrl(payload.url);
+            toast.success('다른 마스터 기기에서 MR을 업로드했습니다.', { duration: 3000 });
+        } else if (action === 'SET_STUDIO_MODE' && payload?.enabled !== undefined) {
+            setIsStudioMode(payload.enabled);
+        } else if (action === 'START_RECORD') {
+            setIsRecordingMaster(true);
+            toast('다른 마스터 기기에서 전체 녹음을 시작했습니다.', { icon: '🔴' });
+        } else if (action === 'STOP_RECORD') {
+            setIsRecordingMaster(false);
+            toast.success('다른 마스터 기기에서 전체 녹음을 종료했습니다.', { duration: 3000 });
+        }
+    }, []);
+
+    const { status: wsStatus, satellites, connect, disconnect, broadcastCommand } = useMasterSubscriber(roomId, handleMasterCommand);
 
     // Phase 4: Recordings Explorer States
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -50,6 +70,11 @@ export default function MasterPage() {
             fetchLatestBackingTrack(roomId).then(url => {
                 if (url) setMrUrl(url);
             });
+
+            // Restore Scores if the page was refreshed
+            fetchLatestScores(roomId).then(urls => {
+                if (urls.length > 0) setScoreUrls(urls);
+            });
         }
     }, [isConnected, roomId]);
 
@@ -71,6 +96,29 @@ export default function MasterPage() {
         if (!roomId.trim()) return;
         connect();
     };
+
+    // Phase 14: Late Joiner State Synchronization
+    // If a choir member connects AFTER the master has uploaded a score, turned on Studio Mode,
+    // or loaded an MR, they need to receive the current state immediately upon joining.
+    // Ensure this hook runs unconditionally BEFORE the early return.
+    const prevSatelliteCountRef = useRef(0);
+
+    useEffect(() => {
+        const currentCount = Object.keys(satellites).length;
+        if (currentCount > prevSatelliteCountRef.current && wsStatus === 'connected') {
+            // A new satellite joined! Blast the current Master state to ensure they are synchronized.
+            console.log("New satellite detected. Broadcasting current master state to late joiners...");
+
+            // Wait a tiny bit (500ms) to ensure the newly joined satellite has fully subscribed to the channel
+            setTimeout(() => {
+                if (isStudioMode) broadcastCommand('SET_STUDIO_MODE', { enabled: true });
+                if (isRecordingMaster) broadcastCommand('START_RECORD');
+                if (mrUrl) broadcastCommand('PRELOAD_MR', { url: mrUrl });
+                if (scoreUrls.length > 0) broadcastCommand('SCORE_SYNC', { urls: scoreUrls });
+            }, 500);
+        }
+        prevSatelliteCountRef.current = currentCount;
+    }, [satellites, wsStatus, isStudioMode, isRecordingMaster, mrUrl, scoreUrls, broadcastCommand]);
 
     if (!isConnected) {
         return (
@@ -214,7 +262,7 @@ export default function MasterPage() {
         setIsStudioMode(nextState);
         broadcastCommand('SET_STUDIO_MODE', { enabled: nextState });
         if (nextState) {
-            toast.success('스튜디오 모드 활성화됨.\n위성들의 녹음이 WAV 무손실 포맷으로 강제됩니다.', { duration: 4000 });
+            toast.success('스튜디오 모드 활성화됨.\n위성들의 녹음이 WAV 무손실 포맷으로 전환됩니다.', { duration: 4000 });
         } else {
             toast('스튜디오 모드 해제됨.\n일반 압축 포맷(Opus)으로 복귀합니다.', { icon: 'ℹ️' });
         }
@@ -256,10 +304,29 @@ export default function MasterPage() {
                 onSwitchMode={setViewMode}
                 isStudioMode={isStudioMode}
                 onToggleStudioMode={handleToggleStudioMode}
-                activeChord={activeChord}
             />
 
-            <div className="flex-1 p-6 overflow-y-auto w-full">
+            {/* Manager Console overlay (only visible in Manager tab) */}
+            {viewMode === 'manager' && (
+                <div className="px-6 pt-6 -mb-2 z-10">
+                    <ManagerConsole
+                        roomId={roomId}
+                        satelliteCount={satelliteArray.length}
+                        isRecordingMaster={isRecordingMaster}
+                        isUploadingMR={isUploadingMR}
+                        mrUrl={mrUrl}
+                        onToggleRecord={handleToggleRecord}
+                        onMRUpload={handleMRUpload}
+                        onScoreUpload={handleScoreUpload}
+                        isUploadingScore={isUploadingScore}
+                        onOpenDrawer={() => setIsDrawerOpen(true)}
+                        isStudioMode={isStudioMode}
+                        onToggleStudioMode={handleToggleStudioMode}
+                    />
+                </div>
+            )}
+
+            <div className={`flex-1 overflow-y-auto w-full ${viewMode === 'manager' ? 'p-6 pt-2' : 'p-6'}`}>
                 <SatelliteGrid
                     roomId={roomId}
                     satellites={satelliteArray}
@@ -297,6 +364,24 @@ export default function MasterPage() {
                         className="w-full h-full object-cover"
                     />
                     <div className="absolute top-2 right-2 bg-red-600 rounded-full w-2 h-2 animate-pulse" />
+                </div>
+            )}
+
+            {/* Floating Conductor Controls (Bottom Left) */}
+            {viewMode === 'conductor' && (
+                <div className="fixed bottom-6 left-6 z-40 flex flex-col gap-3 pointer-events-auto">
+                    {/* Harmony monitor */}
+                    <div className={`flex items-center justify-center h-[52px] px-5 rounded-2xl font-bold transition-colors duration-500 border shadow-2xl backdrop-blur-md ${activeChord ? 'bg-amber-500/20 text-amber-400 border-amber-500/40' : 'bg-slate-900/80 text-slate-500 border-slate-700/50'}`}>
+                        <span className="text-[11px] md:text-sm uppercase tracking-widest opacity-80 mt-0.5 mr-3">Harmony</span>
+                        <span className="text-lg sm:text-xl font-black whitespace-nowrap min-w-[34px] text-center tracking-tighter">
+                            {activeChord ? activeChord.name : '---'}
+                        </span>
+                    </div>
+
+                    {/* Metronome */}
+                    <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden p-2">
+                        <MetronomeControl />
+                    </div>
                 </div>
             )}
 

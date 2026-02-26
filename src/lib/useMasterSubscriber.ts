@@ -10,7 +10,10 @@ export interface SatelliteState {
     connected: boolean;
 }
 
-export function useMasterSubscriber(roomId: string) {
+export function useMasterSubscriber(
+    roomId: string,
+    onCommandReceived?: (action: 'START_RECORD' | 'STOP_RECORD' | 'PRELOAD_MR' | 'SCORE_SYNC' | 'PAGE_SYNC' | 'SET_STUDIO_MODE', payloadData?: any) => void
+) {
     const [status, setStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
     const [satellites, setSatellites] = useState<Record<string, SatelliteState>>({});
     const channelRef = useRef<RealtimeChannel | null>(null);
@@ -18,6 +21,12 @@ export function useMasterSubscriber(roomId: string) {
     // Throttle React state updates to avoid rendering 40x a second
     const pendingStateRef = useRef<Record<string, SatelliteState>>({});
     const lastRenderTimeRef = useRef<number>(0);
+
+    // Keep callback fresh without triggering re-renders
+    const commandCallbackRef = useRef(onCommandReceived);
+    useEffect(() => {
+        commandCallbackRef.current = onCommandReceived;
+    }, [onCommandReceived]);
 
     const connect = useCallback(() => {
         if (!roomId) return;
@@ -40,6 +49,12 @@ export function useMasterSubscriber(roomId: string) {
                 if (now - lastRenderTimeRef.current > 66) {
                     setSatellites(prev => ({ ...prev, ...pendingStateRef.current }));
                     lastRenderTimeRef.current = now;
+                }
+            })
+            .on('broadcast', { event: 'master_command' }, ({ payload }) => {
+                if (commandCallbackRef.current && payload?.action) {
+                    // console.log("Master received its own/another master's command:", payload.action);
+                    commandCallbackRef.current(payload.action, payload);
                 }
             })
             .subscribe((status, err) => {
