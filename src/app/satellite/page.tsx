@@ -74,14 +74,20 @@ export default function SatellitePage() {
         } else if (action === 'START_RECORD') {
             if (isSoloRecording) return; // Prevent master from interrupting active solo take
 
-            // Start the actual hardware recording pipeline immediately. 
-            // The MR playback will wait and fire EXACTLY when the microphone yields its first byte of audio data,
-            // locking the Blob's 0.0s timeline perfectly to the MR's 0.0s timeline without math.
-            startRecording(() => {
-                if (isMrReady) {
-                    playBackingTrack();
-                }
-            });
+            // T=0 Global WebRTC Sync: Wait until the network-agreed explicit targetTime.
+            const targetTime = payload?.targetTime || Date.now();
+            const delay = Math.max(0, targetTime - Date.now());
+
+            setTimeout(() => {
+                // Start the actual hardware recording pipeline immediately. 
+                // The MR playback will wait and fire EXACTLY when the microphone yields its first byte of audio data,
+                // locking the Blob's 0.0s timeline perfectly to the MR's 0.0s timeline without math.
+                startRecording(() => {
+                    if (isMrReady) {
+                        playBackingTrack();
+                    }
+                });
+            }, delay);
         } else if (action === 'STOP_RECORD') {
             if (isSoloRecording) return; // Don't stop if user is recording manually
             stopRecording();
