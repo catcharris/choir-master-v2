@@ -114,17 +114,17 @@ export function MasterHeader({
             <div className="flex items-center gap-2 md:gap-3 justify-center md:justify-end w-full md:w-auto overflow-x-auto hide-scrollbar pb-1 md:pb-0 shrink-0">
                 {/* ---------- CONDUCTOR TAB ---------- */}
                 {viewMode === 'conductor' && (
-                    <div className="flex items-center gap-2 md:gap-3 w-full justify-center md:w-auto overflow-x-auto hide-scrollbar pb-1 md:pb-0 shrink-0">
+                    <div className="flex items-center gap-2 md:gap-3 w-full justify-center md:w-auto shrink-0">
                         {/* Harmony Analysis Monitor (Conductor only) */}
-                        <div className={`flex items-center justify-center h-[36px] min-w-[120px] shrink-0 gap-1 sm:gap-2 px-2 sm:px-3 rounded-xl font-bold transition-colors duration-500 border ${activeChord ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-inner' : 'bg-slate-800 text-slate-500 border-slate-700/50 shadow-sm'}`}>
+                        <div className={`flex items-center justify-center flex-1 md:flex-none h-10 md:h-[36px] min-w-[120px] shrink-0 gap-1 sm:gap-2 px-2 sm:px-3 rounded-xl font-bold transition-colors duration-500 border ${activeChord ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-inner' : 'bg-slate-800 text-slate-500 border-slate-700/50 shadow-sm'}`}>
                             <span className="text-[10px] md:text-xs uppercase tracking-widest opacity-80 mt-0.5">Harmony</span>
                             <span className="text-sm sm:text-base font-black whitespace-nowrap min-w-[30px] sm:min-w-[34px] text-center tracking-tighter">
                                 {activeChord?.name || '---'}
                             </span>
                         </div>
 
-                        <div className="shrink-0 flex items-center justify-center min-w-[160px]">
-                            <MetronomeControl className="w-full" />
+                        <div className="flex-1 md:flex-none flex items-center justify-center min-w-[160px] h-10 md:h-[36px]">
+                            <MetronomeControl className="w-full h-full" />
                         </div>
                     </div>
                 )}

@@ -3,6 +3,8 @@ import { supabase } from './supabaseClient';
 import { PitchData } from './pitch';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
+export type ServerAction = 'START_RECORD' | 'STOP_RECORD' | 'PRELOAD_MR' | 'SCORE_SYNC' | 'PAGE_SYNC' | 'SET_STUDIO_MODE' | 'CLEAR_ROOM';
+
 export interface SatelliteState {
     part: string;
     pitch: PitchData | null;
@@ -120,7 +122,7 @@ export function useMasterSubscriber(
      * Broadcast a command to all connected satellites
      * action: 'START_RECORD' | 'STOP_RECORD' | 'PRELOAD_MR' | 'SCORE_SYNC' | 'PAGE_SYNC' | 'SET_STUDIO_MODE'
      */
-    const broadcastCommand = useCallback((action: 'START_RECORD' | 'STOP_RECORD' | 'PRELOAD_MR' | 'SCORE_SYNC' | 'PAGE_SYNC' | 'SET_STUDIO_MODE', payloadData?: Record<string, any>) => {
+    const broadcastCommand = useCallback((action: ServerAction, payloadData?: Record<string, any>) => {
         if (channelRef.current && status === 'connected') {
             const payload: any = { action, ...payloadData, timestamp: Date.now() };
 

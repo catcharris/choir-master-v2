@@ -9,6 +9,7 @@ import { fetchRoomTracks, PracticeTrack } from '@/lib/storageUtils';
 import { uploadBackingTrack, fetchLatestBackingTrack } from '@/lib/backingTrackUtils';
 import { uploadScoreImages, fetchLatestScores } from '@/lib/scoreUtils';
 import { detectChord } from '@/lib/chordDetector';
+import { clearRoomData } from '@/lib/clearRoomData';
 
 import { MasterHeader } from '@/components/master/MasterHeader';
 import { SatelliteGrid, SatelliteData } from '@/components/master/SatelliteGrid';
@@ -16,7 +17,7 @@ import { RecordingsDrawer } from '@/components/master/RecordingsDrawer';
 import { MasterScoreModal } from '@/components/master/MasterScoreModal';
 import { PracticeListBookmark } from '@/components/master/PracticeListBookmark';
 import { ManagerConsole } from '@/components/master/ManagerConsole';
-import { Presentation } from 'lucide-react';
+import { Presentation, LogOut, Trash2 } from 'lucide-react';
 
 export default function MasterPage() {
     const [roomId, setRoomId] = useState('');
@@ -61,6 +62,24 @@ export default function MasterPage() {
 
     // Phase 13: Maestro Cam 1:N WebRTC Master
     const { isCamActive, startCamera, stopCamera, stream } = useMaestroCamMaster(roomId);
+
+    // Phase 15: Room Cleanup on Disconnect
+    const [isDisconnectModalOpen, setIsDisconnectModalOpen] = useState(false);
+
+    const handleClearRoom = async () => {
+        // Broadcast to satellites to clear their screens unconditionally
+        broadcastCommand('CLEAR_ROOM');
+        // Clear all stored data from Supabase
+        await clearRoomData(roomId);
+
+        setIsDisconnectModalOpen(false);
+        disconnect();
+    };
+
+    const handleJustDisconnect = () => {
+        setIsDisconnectModalOpen(false);
+        disconnect();
+    };
 
     const isConnected = wsStatus === 'connected';
 
@@ -299,7 +318,7 @@ export default function MasterPage() {
                 onOpenDrawer={() => setIsDrawerOpen(true)}
                 hasScore={scoreUrls.length > 0}
                 onOpenScore={() => setIsScoreModalOpen(true)}
-                onDisconnect={disconnect}
+                onDisconnect={() => setIsDisconnectModalOpen(true)}
                 viewMode={viewMode}
                 onSwitchMode={setViewMode}
                 isStudioMode={isStudioMode}
@@ -372,15 +391,59 @@ export default function MasterPage() {
             {scoreUrls.length > 0 && viewMode === 'conductor' && (
                 <button
                     onClick={() => setIsScoreModalOpen(true)}
-                    className="fixed bottom-6 left-6 z-40 flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-4 rounded-full shadow-2xl transition-all hover:scale-105 active:scale-95 group border border-emerald-400/50 pointer-events-auto"
+                    className="fixed bottom-6 left-6 z-40 flex items-center justify-center w-16 h-16 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full shadow-2xl transition-all hover:scale-105 active:scale-95 group border border-emerald-400/50 pointer-events-auto"
+                    title="악보 열람"
                 >
                     <Presentation size={24} className="group-hover:animate-pulse" />
-                    <span className="text-lg font-bold">악보 열람</span>
                 </button>
             )}
 
             {/* Floating Bookmark for Today's Songs */}
             <PracticeListBookmark />
+
+            {/* Disconnect Warning Modal */}
+            {isDisconnectModalOpen && (
+                <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 md:p-6">
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => setIsDisconnectModalOpen(false)} />
+                    <div className="relative w-full max-w-md bg-slate-900 border border-slate-700 p-6 sm:p-8 rounded-[2rem] shadow-2xl flex flex-col gap-6 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex flex-col items-center text-center gap-4">
+                            <div className="w-16 h-16 rounded-full bg-rose-500/10 flex items-center justify-center text-rose-500 shadow-inner">
+                                <LogOut size={32} />
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-black text-white mb-2 tracking-tight">방에서 나가시겠습니까?</h3>
+                                <p className="text-slate-400 text-sm leading-relaxed break-keep">
+                                    지휘자나 다른 관리자가 아직 이 방에 남아있다면 <br className="hidden sm:block" />
+                                    <strong className="text-slate-200">그냥 나가기</strong>를 선택해 주세요.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-3 mt-2">
+                            <button
+                                onClick={handleJustDisconnect}
+                                className="w-full flex items-center justify-center gap-3 bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 px-6 rounded-2xl transition-all border border-slate-700 hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+                            >
+                                <LogOut size={20} className="text-slate-400" />
+                                <span>그냥 접속 끊고 나가기</span>
+                            </button>
+                            <button
+                                onClick={handleClearRoom}
+                                className="w-full flex items-center justify-center gap-3 bg-rose-600 hover:bg-rose-500 text-white font-bold py-4 px-6 rounded-2xl transition-all shadow-lg hover:shadow-rose-500/25 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+                            >
+                                <Trash2 size={20} />
+                                <span>방에 남은 데이터 모두 초기화하고 폭파하기</span>
+                            </button>
+                            <button
+                                onClick={() => setIsDisconnectModalOpen(false)}
+                                className="w-full py-4 text-slate-500 hover:text-slate-300 font-bold text-sm transition-colors mt-2"
+                            >
+                                취소
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }

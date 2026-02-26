@@ -121,6 +121,13 @@ export default function SatellitePage() {
                     toast("스튜디오 모드가 꺼졌습니다.", { icon: "ℹ️" });
                 }
             }
+        } else if (action === 'CLEAR_ROOM') {
+            setMrUrl(null);
+            setIsMrReady(false);
+            setScoreUrls([]);
+            setIsScoreOpen(false);
+            setIsStudioMode(false);
+            toast("지휘자가 방을 초기화하고 종료했습니다.\n(새로운 악보와 반주를 기다립니다)", { icon: "🧹", duration: 5000 });
         }
     }, [startRecording, stopRecording, getRecordedBlob, roomId, partName, preloadBackingTrack, playBackingTrack, stopBackingTrack, isMrReady, isSoloRecording]);
 
