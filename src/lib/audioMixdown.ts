@@ -83,13 +83,20 @@ export async function mixdownTracks(
     panning: Record<string, number>,
     masterEq: { low: number, mid: number, high: number },
     reverbAmount: number = 0, // 0.0 to 1.0 (Wet/Dry mix)
-    mrUrl?: string | null     // Optional backing track to layer in
+    mrUrl?: string | null,    // Optional backing track to layer in
+    userOffsetsMs: Record<string, number> = {} // Custom user tweaks
 ): Promise<Blob> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
 
     // 1. Fetch and decode all audio
     const buffers: { buffer: AudioBuffer, trackId: string, offsetSec: number }[] = [];
+
+    // Calculate the global shift needed if any track has a negative user offset (meaning it needs to start "earlier")
+    // If a track wants to start at -100ms, we can't rewind time. So we instead push EVERYTHING ELSE forward by +100ms.
+    const minUserOffset = Math.min(0, ...Object.values(userOffsetsMs));
+    const globalShiftMs = Math.abs(minUserOffset);
+    const globalShiftSec = globalShiftMs / 1000;
 
     // 1(a). Fetch MR if provided
     if (mrUrl) {
@@ -98,7 +105,7 @@ export async function mixdownTracks(
             if (response.ok) {
                 const arrayBuffer = await response.arrayBuffer();
                 const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-                buffers.push({ buffer: audioBuffer, trackId: '__mr__', offsetSec: 0 });
+                buffers.push({ buffer: audioBuffer, trackId: '__mr__', offsetSec: globalShiftSec });
             }
         } catch (err) {
             console.error("Failed to include MR in mixdown:", err);
@@ -115,8 +122,13 @@ export async function mixdownTracks(
 
         // Decode the Opus/WebM/MP4 data into raw PCM AudioBuffer
         const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-        const offsetSec = (track.offsetMs || 0) / 1000;
-        buffers.push({ buffer: audioBuffer, trackId: track.id, offsetSec });
+        const baseOffsetMs = track.offsetMs || 0;
+        const userOffsetMs = userOffsetsMs[track.id] || 0;
+
+        // Final offset = Hardware Latency + User Custom Tweak + Global Negative Shift Padding
+        const finalOffsetSec = (baseOffsetMs + userOffsetMs + globalShiftMs) / 1000;
+
+        buffers.push({ buffer: audioBuffer, trackId: track.id, offsetSec: finalOffsetSec });
     }
 
     // 2. Determine longest track to set canvas duration

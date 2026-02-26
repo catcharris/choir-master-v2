@@ -37,6 +37,7 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, onDeleteComplete }
     const [trackPlaying, setTrackPlaying] = useState<Record<string, boolean>>({});
     const [tracksReadyStatus, setTracksReadyStatus] = useState<Record<string, boolean>>({});
     const [panning, setPanning] = useState<Record<string, number>>({});
+    const [userOffsets, setUserOffsets] = useState<Record<string, number>>({}); // Manual +/- ms alignment
     const [masterEq, setMasterEq] = useState({ low: 0, mid: 0, high: 0 });
 
     const handlePanChange = (trackId: string, val: number) => setPanning(prev => ({ ...prev, [trackId]: val }));
@@ -62,6 +63,11 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, onDeleteComplete }
         tracks.forEach(t => { initPan[t.id] = 0; });
         if (mrUrl) initPan['__mr__'] = 0;
         setPanning(initPan);
+
+        // Initialize user offsets map
+        const initOffsets: Record<string, number> = {};
+        tracks.forEach(t => { initOffsets[t.id] = 0; });
+        setUserOffsets(initOffsets);
 
         // Initialize ready status
         const initReady: Record<string, boolean> = {};
@@ -235,7 +241,7 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, onDeleteComplete }
     const handleMixdown = async () => {
         try {
             setIsMixing(true);
-            const wavBlob = await mixdownTracks(tracks, volumes, muted, panning, masterEq, reverbAmount, mrUrl);
+            const wavBlob = await mixdownTracks(tracks, volumes, muted, panning, masterEq, reverbAmount, mrUrl, userOffsets);
             const url = URL.createObjectURL(wavBlob);
 
             const a = document.createElement('a');
@@ -638,6 +644,16 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, onDeleteComplete }
                                     <Download size={14} />
                                     <span className="text-[8px] font-bold hidden sm:inline uppercase">Wav</span>
                                 </a>
+
+                                {/* Sync Fine-Tuning UI */}
+                                <div className="flex items-center bg-slate-800/80 rounded px-1 border border-slate-700/50 shrink-0 h-[28px]">
+                                    <button onClick={() => setUserOffsets(p => ({ ...p, [track.id]: (p[track.id] || 0) - 50 }))} className="text-slate-500 hover:text-white px-2 h-full flex items-center justify-center font-bold text-lg leading-none shrink-0" title="-50ms 당기기">-</button>
+                                    <div className="flex flex-col items-center justify-center min-w-[34px] h-full" title="수동 싱크 보정 (밀리초)">
+                                        <span className="text-[7px] font-bold text-slate-500 uppercase leading-none tracking-tighter -mt-0.5">Sync</span>
+                                        <span className="text-[10px] font-bold text-emerald-400 tabular-nums leading-none mt-0.5">{(userOffsets[track.id] || 0) > 0 ? '+' : ''}{userOffsets[track.id] || 0}</span>
+                                    </div>
+                                    <button onClick={() => setUserOffsets(p => ({ ...p, [track.id]: (p[track.id] || 0) + 50 }))} className="text-slate-500 hover:text-white px-2 h-full flex items-center justify-center font-bold text-lg leading-none shrink-0" title="+50ms 미루기">+</button>
+                                </div>
                             </div>
 
                             {/* WaveSurfer rendering container */}
