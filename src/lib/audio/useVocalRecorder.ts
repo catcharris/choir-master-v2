@@ -45,12 +45,23 @@ export function useVocalRecorder(streamRef: React.MutableRefObject<MediaStream |
                 throw new Error("No supported recording format found.");
             }
 
+            let hasStartedCallback = false;
+
             recorder.onstart = () => {
-                if (onStart) onStart();
+                // We do NOT fire onStart here anymore.
+                // Safari and some browsers fire onstart instantly before the encoder actually warms up,
+                // causing the MR to play 100~300ms too early relative to the actual recorded audio bytes.
             };
 
             recorder.ondataavailable = (e) => {
                 if (e.data.size > 0) {
+                    if (!hasStartedCallback && onStart) {
+                        // T=0 Absolute Sync:
+                        // This is the VERY FIRST frame of actual audio data leaving the microphone encoder.
+                        // Firing onStart() here triggers the Backing Track to play at the exact same physical millisecond.
+                        hasStartedCallback = true;
+                        onStart();
+                    }
                     audioChunksRef.current.push(e.data);
                 }
             };
@@ -62,7 +73,9 @@ export function useVocalRecorder(streamRef: React.MutableRefObject<MediaStream |
                 console.log(`[${isStudioMode ? 'STUDIO' : 'NORMAL'}] Recording stopped. Final Blob size:`, audioBlob.size, "Type:", finalMimeType);
             };
 
-            recorder.start(200); // 200ms chunks to prevent massive memory spikes at the end of long recordings
+            // 50ms chunks to ensure we catch the very first frame of audio as fast as possible for T=0 sync,
+            // instead of waiting 200ms for the first buffer flush.
+            recorder.start(50);
             mediaRecorderRef.current = recorder;
             setIsRecording(true);
         } catch (err: any) {
