@@ -43,7 +43,8 @@ export function useAudioEngine(
     const {
         preloadBackingTrack,
         playBackingTrack,
-        stopBackingTrack
+        stopBackingTrack,
+        setBackingTrackVolume
     } = useBackingTrack(audioContextRef);
 
     return {
@@ -66,6 +67,7 @@ export function useAudioEngine(
         // Backing Track (Web Audio Playback)
         preloadBackingTrack,
         playBackingTrack,
-        stopBackingTrack
+        stopBackingTrack,
+        setBackingTrackVolume
     };
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Music, FileImage, FolderOpen, RadioReceiver } from 'lucide-react';
+import { Music, FileImage, FolderOpen, RadioReceiver, Volume2, VolumeX } from 'lucide-react';
 
 interface ManagerConsoleProps {
     roomId: string;
@@ -14,6 +14,8 @@ interface ManagerConsoleProps {
     onOpenDrawer: () => void;
     isStudioMode: boolean;
     onToggleStudioMode: () => void;
+    isMrMuted: boolean;
+    onToggleMrMute: () => void;
 }
 
 export function ManagerConsole({
@@ -28,7 +30,9 @@ export function ManagerConsole({
     isUploadingScore,
     onOpenDrawer,
     isStudioMode,
-    onToggleStudioMode
+    onToggleStudioMode,
+    isMrMuted,
+    onToggleMrMute
 }: ManagerConsoleProps) {
     return (
         <div className="w-full bg-slate-900/50 backdrop-blur-md border border-slate-700/50 rounded-2xl p-4 sm:p-5 mb-6 shadow-xl">
@@ -82,7 +86,20 @@ export function ManagerConsole({
                     />
                 </label>
 
-                {/* 4. Audio Drawer */}
+                {/* 4. MR Mute Toggle */}
+                {mrUrl && (
+                    <button
+                        onClick={onToggleMrMute}
+                        className={`flex flex-col items-center justify-center p-3 rounded-2xl aspect-square transition-all shadow-md hover:-translate-y-0.5 ${isMrMuted ? 'bg-amber-600/20 text-amber-500 border border-amber-500/30 shadow-amber-500/10' : 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700'}`}
+                    >
+                        {isMrMuted ? <VolumeX size={24} className="mb-2" /> : <Volume2 size={24} className="mb-2" />}
+                        <span className="text-[11px] sm:text-xs font-bold text-center leading-tight">
+                            {isMrMuted ? 'MR 뮤트됨' : 'MR 소리 켬'}
+                        </span>
+                    </button>
+                )}
+
+                {/* 5. Audio Drawer */}
                 <button
                     onClick={onOpenDrawer}
                     className="flex flex-col items-center justify-center p-3 rounded-2xl aspect-square transition-all shadow-md hover:-translate-y-0.5 bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700"

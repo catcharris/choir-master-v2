@@ -3,6 +3,13 @@ import { useRef, useCallback, useEffect } from 'react';
 export function useBackingTrack(audioContextRef: React.MutableRefObject<AudioContext | null>) {
     const mrBufferRef = useRef<AudioBuffer | null>(null);
     const mrSourceRef = useRef<AudioBufferSourceNode | null>(null);
+    const mrGainRef = useRef<GainNode | null>(null);
+
+    const setBackingTrackVolume = useCallback((volume: number) => {
+        if (mrGainRef.current && audioContextRef.current) {
+            mrGainRef.current.gain.setTargetAtTime(volume, audioContextRef.current.currentTime, 0.05);
+        }
+    }, [audioContextRef]);
 
     const preloadBackingTrack = useCallback(async (url: string): Promise<{ success: boolean; error?: string }> => {
         if (!audioContextRef.current) {
@@ -49,6 +56,12 @@ export function useBackingTrack(audioContextRef: React.MutableRefObject<AudioCon
         if (!audioContextRef.current || !mrBufferRef.current) return false;
 
         try {
+            // Safari workaround: If context was auto-created in a useEffect, it will be suspended.
+            // We must resume it during this user-initiated playback event.
+            if (audioContextRef.current.state === 'suspended') {
+                audioContextRef.current.resume();
+            }
+
             if (mrSourceRef.current) {
                 try { mrSourceRef.current.stop(); } catch (e) { }
                 mrSourceRef.current.disconnect();
@@ -56,7 +69,12 @@ export function useBackingTrack(audioContextRef: React.MutableRefObject<AudioCon
 
             const source = audioContextRef.current.createBufferSource();
             source.buffer = mrBufferRef.current;
-            source.connect(audioContextRef.current.destination);
+
+            const gainNode = audioContextRef.current.createGain();
+            mrGainRef.current = gainNode;
+
+            source.connect(gainNode);
+            gainNode.connect(audioContextRef.current.destination);
             source.start(0);
 
             mrSourceRef.current = source;
@@ -85,6 +103,7 @@ export function useBackingTrack(audioContextRef: React.MutableRefObject<AudioCon
     return {
         preloadBackingTrack,
         playBackingTrack,
-        stopBackingTrack
+        stopBackingTrack,
+        setBackingTrackVolume
     };
 }

@@ -26,7 +26,7 @@ export default function MasterPage() {
 
     // WebAudio context for perfectly synced MR playback
     const audioContextRef = useRef<AudioContext | null>(null);
-    const { preloadBackingTrack, playBackingTrack, stopBackingTrack } = useBackingTrack(audioContextRef);
+    const { preloadBackingTrack, playBackingTrack, stopBackingTrack, setBackingTrackVolume } = useBackingTrack(audioContextRef);
 
     const [masterPage, setMasterPage] = useState(0);
     const handleMasterCommand = useCallback((action: string, payload: any) => {
@@ -82,6 +82,16 @@ export default function MasterPage() {
     const [isUploadingScore, setIsUploadingScore] = useState(false);
     const [scoreUrls, setScoreUrls] = useState<string[]>([]);
     const [isScoreModalOpen, setIsScoreModalOpen] = useState(false);
+
+    // Mute MR Toggle
+    const [isMrMuted, setIsMrMuted] = useState(false);
+    const handleToggleMrMute = () => {
+        setIsMrMuted(prev => {
+            const next = !prev;
+            setBackingTrackVolume(next ? 0 : 1);
+            return next;
+        });
+    };
 
     // Phase 13: Maestro Cam 1:N WebRTC Master
     const { isCamActive, startCamera, stopCamera, stream } = useMaestroCamMaster(roomId);
@@ -424,6 +434,8 @@ export default function MasterPage() {
                         onOpenDrawer={() => setIsDrawerOpen(true)}
                         isStudioMode={isStudioMode}
                         onToggleStudioMode={handleToggleStudioMode}
+                        isMrMuted={isMrMuted}
+                        onToggleMrMute={handleToggleMrMute}
                     />
                 </div>
             )}
@@ -513,14 +525,14 @@ export default function MasterPage() {
                                 className="w-full flex items-center justify-center gap-3 bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 px-6 rounded-2xl transition-all border border-slate-700 hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-900"
                             >
                                 <LogOut size={20} className="text-slate-400" />
-                                <span>그냥 접속 끊고 나가기</span>
+                                <span>그냥 나가기 (데이터 남을 수 있음)</span>
                             </button>
                             <button
                                 onClick={handleClearRoom}
                                 className="w-full flex items-center justify-center gap-3 bg-rose-600 hover:bg-rose-500 text-white font-bold py-4 px-6 rounded-2xl transition-all shadow-lg hover:shadow-rose-500/25 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 focus:ring-offset-slate-900"
                             >
                                 <Trash2 size={20} />
-                                <span>방에 남은 데이터 모두 초기화하고 폭파하기</span>
+                                <span>연습데이터 초기화 하고 나가기</span>
                             </button>
                             <button
                                 onClick={() => setIsDisconnectModalOpen(false)}
