@@ -136,6 +136,9 @@ export default function SatellitePage() {
             setScoreUrls([]);
             setIsScoreOpen(false);
             setIsStudioMode(false);
+            setIsSoloRecording(false);
+            stopBackingTrack();
+            toast.dismiss();
             toast("마스터가 방을 초기화했습니다.\n(새로운 악보와 반주를 기다립니다)", { icon: "🧹", duration: 3000 });
         }
     }, [startRecording, stopRecording, getRecordedBlob, roomId, partName, preloadBackingTrack, playBackingTrack, stopBackingTrack, isMrReady, isSoloRecording]);
@@ -212,6 +215,9 @@ export default function SatellitePage() {
     const handleDisconnect = () => {
         disconnect();
         stopListening();
+        setIsSoloRecording(false);
+        stopBackingTrack();
+        toast.dismiss();
     };
 
     const handleSoloPracticeToggle = () => {
@@ -253,7 +259,7 @@ export default function SatellitePage() {
             <div className="relative z-10 w-full h-full max-w-md md:max-w-2xl lg:max-w-4xl flex flex-col">
 
                 {/* Header (Status & Room Info) */}
-                <div className={`flex-shrink-0 flex flex-col items-center pb-6 min-h-[140px] transition-all duration-500 ${maestroStream ? 'pt-64 sm:pt-72' : 'pt-2'}`}>
+                <div className="flex-shrink-0 flex flex-col items-center pt-2 pb-6 min-h-[140px] transition-all duration-500">
                     <div key={isRecording ? 'rec' : 'idle'} className={`px-5 py-2.5 rounded-2xl flex items-center gap-2.5 text-sm font-bold shadow-lg shadow-black/20 border ${isRecording ? 'bg-red-500/15 text-red-400 border-red-500/30 animate-pulse' : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'}`}>
                         {isRecording ? <Mic size={18} className="animate-bounce" /> : <RadioReceiver size={18} />}
                         {isRecording ? '마스터 동기화 녹음 중' : '데이터 스트리밍 대기 중'}
