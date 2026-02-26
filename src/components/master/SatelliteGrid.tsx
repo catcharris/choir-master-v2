@@ -36,13 +36,15 @@ export function SatelliteGrid({ roomId, satellites, viewMode = 'conductor' }: Sa
     let cardPadding = "p-3 sm:p-5";
     let titleSize = "text-lg sm:text-xl";
     let pitchSize = "text-[2rem] sm:text-[3rem]";
+    let centsSize = count > 24 ? "text-xs" : "text-lg sm:text-2xl";
 
     if (viewMode === 'manager') {
         // Tech Mode: Extremely dense packing
         gridCols = "grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 sm:gap-3";
         cardPadding = "p-2";
-        titleSize = "text-xs font-bold";
-        pitchSize = "text-xl sm:text-2xl font-black";
+        titleSize = "text-[10px] font-bold opacity-80";
+        pitchSize = "text-xl sm:text-3xl font-black mt-2"; // Added mt-2 to visually center ignoring absolute top text
+        centsSize = "text-[10px] sm:text-xs font-bold";
     } else if (count > 24) {
         // Massive choir mode (25~50+)
         gridCols = "grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 sm:gap-3";
@@ -84,8 +86,8 @@ export function SatelliteGrid({ roomId, satellites, viewMode = 'conductor' }: Sa
                             {/* Elegant Background Glow */}
                             {sat.connected && <div className={`absolute top-0 right-0 w-32 h-32 blur-[60px] rounded-full opacity-30 pointer-events-none transition-colors duration-500 ${isStable ? 'bg-green-500' : p?.cents && p.cents > 0 ? 'bg-rose-500' : p?.cents && p.cents < 0 ? 'bg-blue-500' : 'bg-indigo-500'}`} />}
 
-                            <div className={`flex justify-start items-start z-10 w-full ${count > 24 ? 'mb-1' : 'mb-2'}`}>
-                                <div className="flex-1 min-w-0 pr-2">
+                            <div className={viewMode === 'manager' ? `absolute top-1.5 left-2 z-20 w-[calc(100%-16px)] flex justify-start items-start pointer-events-none` : `flex justify-start items-start z-10 w-full ${count > 24 ? 'mb-1' : 'mb-2'}`}>
+                                <div className={viewMode === 'manager' ? 'max-w-full' : 'flex-1 min-w-0 pr-2'}>
                                     <h2 className={`${titleSize} font-black text-transparent bg-clip-text bg-gradient-to-br from-white to-slate-400 leading-tight truncate`}>{sat.part}</h2>
                                 </div>
                                 {viewMode !== 'manager' && (
@@ -108,7 +110,7 @@ export function SatelliteGrid({ roomId, satellites, viewMode = 'conductor' }: Sa
                                             <div className={`${pitchSize} leading-none tracking-tighter tabular-nums drop-shadow-xl truncate`}>
                                                 {p.note}
                                             </div>
-                                            <span className={`${count > 24 ? 'text-xs' : 'text-lg sm:text-2xl'} font-bold mb-1 ml-1 transition-colors duration-300 ${isStable ? 'text-green-400' : 'text-slate-400'}`}>
+                                            <span className={`${centsSize} mb-1 sm:mb-2 ml-0.5 sm:ml-1 transition-colors duration-300 ${isStable ? 'text-green-400' : 'text-slate-400'}`}>
                                                 {p.cents > 0 ? '+' : ''}{p.cents}
                                             </span>
                                         </div>
