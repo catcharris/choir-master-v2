@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Play, Pause, Square, Volume2, VolumeX, Download, Layers, Waves, AlertTriangle, Settings2, X, SlidersHorizontal } from 'lucide-react';
 import { PracticeTrack, deleteRoomTracks } from '@/lib/storageUtils';
-import { mixdownTracks } from '@/lib/audioMixdown';
+import { mixdownTracks, START_RECORD_DELAY_SEC } from '@/lib/audioMixdown';
 import WaveSurfer from 'wavesurfer.js';
 import toast from 'react-hot-toast';
 
@@ -154,14 +154,26 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, onDeleteComplete }
         };
     }, [mrUrl]);
 
-    // Handle global play/pause
     const togglePlay = () => {
         if (isPlaying) {
             wavesurferRefs.current.forEach(ws => ws?.pause());
             mrWavesurferRef.current?.pause();
         } else {
-            wavesurferRefs.current.forEach(ws => ws?.play());
-            mrWavesurferRef.current?.play();
+            // Because the Satellite's MediaRecorder starts exactly 1.5s AFTER the MR begins,
+            // the recorded blob's 0.0s mark corresponds to the MR's 1.5s mark.
+            // When playing them back together from the beginning, we must skip the MR forward by 1.5s
+            // so they align perfectly.
+            wavesurferRefs.current.forEach(ws => {
+                if (ws) {
+                    ws.setTime(0);
+                    ws.play();
+                }
+            });
+            if (mrWavesurferRef.current) {
+                // If the user hasn't explicitly scrubbed, force sync
+                mrWavesurferRef.current.setTime(START_RECORD_DELAY_SEC);
+                mrWavesurferRef.current.play();
+            }
         }
         setIsPlaying(!isPlaying);
     };

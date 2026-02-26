@@ -73,6 +73,9 @@ function createReverbIR(audioCtx: BaseAudioContext, duration: number, decay: num
     return impulse;
 }
 
+export const START_RECORD_DELAY_MS = 1500;
+export const START_RECORD_DELAY_SEC = START_RECORD_DELAY_MS / 1000;
+
 export async function mixdownTracks(
     tracks: PracticeTrack[],
     volumes: Record<string, number>,
@@ -118,8 +121,12 @@ export async function mixdownTracks(
     // 2. Determine longest track to set canvas duration
     let maxDuration = 0;
     for (const b of buffers) {
-        if (b.buffer.duration > maxDuration) {
-            maxDuration = b.buffer.duration;
+        let trackDuration = b.buffer.duration;
+        if (b.trackId === '__mr__') {
+            trackDuration += START_RECORD_DELAY_SEC; // Accounts for offset
+        }
+        if (trackDuration > maxDuration) {
+            maxDuration = trackDuration;
         }
     }
 
@@ -200,7 +207,14 @@ export async function mixdownTracks(
         trackGain.connect(trackPan);
         trackPan.connect(masterOut);
 
-        source.start(0);
+        // Satellites start exactly at 0.0 because the MediaRecorder was delayed by 1.5s
+        // Therefore, the MR (which is the absolute truth timeline t=0) must be pushed right by +1.5s
+        // so it perfectly aligns with the beginning of the satellite Blob.
+        if (b.trackId === '__mr__') {
+            source.start(START_RECORD_DELAY_SEC);
+        } else {
+            source.start(0);
+        }
     }
 
     // 6. Render entire batch instantly
