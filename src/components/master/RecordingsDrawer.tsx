@@ -25,9 +25,10 @@ export function RecordingsDrawer({
     const groupedTakes = React.useMemo(() => {
         const takes: { timestamp: number, tracks: PracticeTrack[] }[] = [];
         tracks.forEach(t => {
-            const tsString = t.name.split('_')[1];
-            if (!tsString) return;
-            const ts = parseInt(tsString.split('.')[0]);
+            // Bulletproof regex to extract the timestamp right before '_offset' or before the file extension if offset is missing.
+            const match = t.name.match(/_(\d+)(?:_offset_\d+)?\.\w+$/);
+            if (!match) return;
+            const ts = parseInt(match[1], 10);
 
             const existingGroup = takes.find(g => Math.abs(g.timestamp - ts) < 3000);
             if (existingGroup) {

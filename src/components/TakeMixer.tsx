@@ -577,7 +577,9 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, onDeleteComplete }
                                         {mrUrl && renderChannel('__mr__', 'MR Guide', true, -1)}
                                         {tracks.slice(channelBank * 7, (channelBank + 1) * 7).map((track, i) => {
                                             const originalIndex = channelBank * 7 + i;
-                                            const cleanPartName = (b64DecodeUnicode(track.name.split('_')[0]) + '_' + track.name.split('_')[1]).split('_')[0];
+                                            const match = track.name.match(/_(\d+)(?:_offset_\d+)?\.\w+$/);
+                                            const base64Part = match ? track.name.slice(0, match.index) : track.name.split('_')[0];
+                                            const cleanPartName = b64DecodeUnicode(base64Part);
                                             return renderChannel(track.id, cleanPartName, false, originalIndex);
                                         })}
                                     </>
@@ -607,8 +609,10 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, onDeleteComplete }
                 )}
 
                 {tracks.map((track, i) => {
-                    const originalFileName = b64DecodeUnicode(track.name.split('_')[0]) + '_' + track.name.split('_')[1];
-                    const cleanPartName = originalFileName.split('_')[0];
+                    const match = track.name.match(/_(\d+)(?:_offset_\d+)?\.\w+$/);
+                    const base64Part = match ? track.name.slice(0, match.index) : track.name.split('_')[0];
+                    const cleanPartName = b64DecodeUnicode(base64Part);
+                    const originalFileName = `${cleanPartName}_${match ? match[1] : ''}.wav`;
                     const v = volumes[track.id] ?? 1.0;
                     const m = muted[track.id] ?? false;
 
