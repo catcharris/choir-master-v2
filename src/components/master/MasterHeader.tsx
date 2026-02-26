@@ -49,9 +49,9 @@ export function MasterHeader({
     activeChord
 }: MasterHeaderProps) {
     return (
-        <header className="px-4 justify-center sm:px-6 py-3 sm:py-4 flex flex-col lg:flex-row items-stretch lg:items-center lg:justify-between gap-3 sm:gap-4 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-10 transition-colors duration-500">
+        <header className="px-4 sm:px-6 py-3 sm:py-4 flex flex-row items-center justify-between gap-3 sm:gap-4 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-10 transition-colors duration-500 overflow-x-auto hide-scrollbar w-full">
             {/* Left Side (Tabs, Room Info, Actions) */}
-            <div className="flex items-center justify-between lg:justify-start gap-2 sm:gap-4 w-full lg:w-auto overflow-x-auto hide-scrollbar shrink-0 pb-1 lg:pb-0">
+            <div className="flex items-center justify-start gap-2 sm:gap-4 shrink-0">
                 <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                     <Link href="/" className="flex items-center justify-center w-10 h-10 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-colors shrink-0">
                         <Home size={18} />
@@ -116,14 +116,14 @@ export function MasterHeader({
                 {viewMode === 'conductor' && (
                     <div className="flex items-center gap-2 lg:gap-3 w-full lg:w-auto overflow-x-auto hide-scrollbar pb-1 lg:pb-0 shrink-0">
                         {/* Harmony Analysis Monitor (Conductor only) */}
-                        <div className={`flex items-center justify-center h-[36px] w-[calc(50%-0.25rem)] lg:max-w-none lg:w-auto shrink-0 gap-1 sm:gap-2 px-2 sm:px-3 rounded-xl font-bold transition-colors duration-500 border ${activeChord ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-inner' : 'bg-slate-800 text-slate-500 border-slate-700/50 shadow-sm'}`}>
+                        <div className={`flex items-center justify-center h-[36px] min-w-[120px] shrink-0 gap-1 sm:gap-2 px-2 sm:px-3 rounded-xl font-bold transition-colors duration-500 border ${activeChord ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-inner' : 'bg-slate-800 text-slate-500 border-slate-700/50 shadow-sm'}`}>
                             <span className="text-[10px] md:text-xs uppercase tracking-widest opacity-80 mt-0.5">Harmony</span>
                             <span className="text-sm sm:text-base font-black whitespace-nowrap min-w-[30px] sm:min-w-[34px] text-center tracking-tighter">
-                                {activeChord ? activeChord.name : '---'}
+                                {activeChord?.name || '---'}
                             </span>
                         </div>
 
-                        <div className="w-[calc(50%-0.25rem)] max-w-[180px] lg:max-w-none lg:w-auto shrink-0 flex items-center justify-center">
+                        <div className="shrink-0 flex items-center justify-center min-w-[160px]">
                             <MetronomeControl className="w-full" />
                         </div>
                     </div>
