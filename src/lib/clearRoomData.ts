@@ -22,6 +22,9 @@ export async function clearRoomData(roomId: string) {
         const scoreFolderPath = `${safeRoomId}_scores`;
         await deleteAllFilesInFolder('practice_tracks', scoreFolderPath);
 
+        // 3. Clear Vocal Tracks (Recorded files)
+        await deleteAllFilesInFolder('practice_tracks', safeRoomId);
+
     } catch (err) {
         console.error("Error clearing room data:", err);
     }

@@ -10,7 +10,7 @@ interface TakeMixerProps {
     tracks: PracticeTrack[];
     timestamp: number;
     mrUrl?: string | null; // Added to thread the backing track into playback/mixdown
-    onDeleteComplete?: () => void;
+    onDeleteComplete?: (deletedNames: string[]) => void;
 }
 
 export function TakeMixer({ roomId, tracks, timestamp, mrUrl, onDeleteComplete }: TakeMixerProps) {
@@ -286,7 +286,7 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, onDeleteComplete }
 
             if (success) {
                 toast.success('해당 Take의 원본 음원들이 삭제되었습니다.');
-                if (onDeleteComplete) onDeleteComplete();
+                if (onDeleteComplete) onDeleteComplete(fileNames);
             } else {
                 toast.error('음원 삭제 중 오류가 발생했습니다.');
             }

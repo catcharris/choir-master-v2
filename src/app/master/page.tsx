@@ -141,7 +141,17 @@ export default function MasterPage() {
         }
     }, [isDrawerOpen]);
 
-    const loadTracks = async () => {
+    const loadTracks = async (deletedNames?: string[]) => {
+        if (deletedNames && deletedNames.length > 0) {
+            setTracks(prev => prev.filter(t => !deletedNames.includes(t.name)));
+            // Delayed background fetch to allow Supabase to properly clear the deleted files
+            setTimeout(async () => {
+                const fetched = await fetchRoomTracks(roomId);
+                setTracks(fetched);
+            }, 1500);
+            return;
+        }
+
         setIsLoadingTracks(true);
         const fetched = await fetchRoomTracks(roomId);
         setTracks(fetched);

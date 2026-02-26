@@ -10,7 +10,7 @@ interface RecordingsDrawerProps {
     mrUrl: string | null;
     tracks: PracticeTrack[];
     isLoadingTracks: boolean;
-    onLoadTracks: () => void;
+    onLoadTracks: (deletedNames?: string[]) => void;
 }
 
 export function RecordingsDrawer({
@@ -60,7 +60,7 @@ export function RecordingsDrawer({
                 <div className="p-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
                     <span className="text-sm text-slate-400">Room: {roomId}</span>
                     <button
-                        onClick={onLoadTracks}
+                        onClick={() => onLoadTracks()}
                         disabled={isLoadingTracks}
                         className="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg font-medium transition-colors"
                     >
