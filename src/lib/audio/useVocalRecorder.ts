@@ -146,6 +146,10 @@ export function useVocalRecorder(streamRef: React.MutableRefObject<MediaStream |
         return finalBlobRef.current;
     }, []);
 
+    const clearRecordedBlob = useCallback(() => {
+        finalBlobRef.current = null;
+    }, []);
+
     // Clean up on unmount
     useEffect(() => {
         return () => {
@@ -158,6 +162,7 @@ export function useVocalRecorder(streamRef: React.MutableRefObject<MediaStream |
         startRecording,
         stopRecording,
         getRecordedBlob,
+        clearRecordedBlob,
         recordError
     };
 }

@@ -44,7 +44,7 @@ export default function SatellitePage() {
     // To solve this cleanly, we extract references to the AudioEngine functions.
     const {
         listenMode, startListening, stopListening, pitch, error,
-        isRecording, startRecording, stopRecording, getRecordedBlob,
+        isRecording, startRecording, stopRecording, getRecordedBlob, clearRecordedBlob,
         preloadBackingTrack, playBackingTrack, stopBackingTrack
     } = useAudioEngine(440, (p) => broadcastPitchRef.current(p), isStudioMode, false, recordingProfile);
 
@@ -75,17 +75,17 @@ export default function SatellitePage() {
             if (isSoloRecording) return; // Prevent master from interrupting active solo take
 
             const targetTime = payload?.targetTime || Date.now();
+            const remainingDelay = Math.max(0, targetTime - Date.now());
 
-            // Wait for the actual recording hardware to start receiving data before playing MR
-            // to ensure perfect synchronization between the audio blob timeline and the MR playback.
-            startRecording(() => {
-                if (isMrReady) {
-                    const remainingDelay = Math.max(0, targetTime - Date.now());
-                    setTimeout(() => {
+            setTimeout(() => {
+                // Wait for the actual recording hardware to start receiving data before playing MR
+                // to ensure perfect synchronization between the audio blob timeline and the MR playback.
+                startRecording(() => {
+                    if (isMrReady) {
                         playBackingTrack();
-                    }, remainingDelay);
-                }
-            });
+                    }
+                });
+            }, remainingDelay);
         } else if (action === 'STOP_RECORD') {
             if (isSoloRecording) return; // Don't stop if user is recording manually
             stopRecording();
@@ -99,6 +99,8 @@ export default function SatellitePage() {
                 const blob = getRecordedBlob();
                 if (blob) {
                     clearInterval(checkBlobAndUpload);
+                    clearRecordedBlob(); // Prevents multiple upload triggers from queued intervals
+
                     console.log("Blob ready! Uploading to Supabase...");
                     const path = await uploadAudioBlob(blob, roomId, partName);
                     if (path) {
