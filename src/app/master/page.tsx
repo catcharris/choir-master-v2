@@ -39,7 +39,12 @@ export default function MasterPage() {
         } else if (action === 'SET_STUDIO_MODE' && payload?.enabled !== undefined) {
             setIsStudioMode(payload.enabled);
         } else if (action === 'START_RECORD') {
+            const targetTime = payload?.targetTime || Date.now();
+            // Store the scheduled start time in a ref or state if needed, or just set it
             setIsRecordingMaster(true);
+            setTimeout(() => {
+                if (mrUrl) playBackingTrack();
+            }, Math.max(0, targetTime - Date.now()));
             toast('다른 마스터 기기에서 전체 녹음을 시작했습니다.', { icon: '🔴' });
         } else if (action === 'STOP_RECORD') {
             setIsRecordingMaster(false);
@@ -166,12 +171,10 @@ export default function MasterPage() {
 
     // Phase 14-B: Master MR Playback Sync (WebAudio 0-latency)
     useEffect(() => {
-        if (isRecordingMaster && mrUrl) {
-            playBackingTrack();
-        } else {
+        if (!isRecordingMaster) {
             stopBackingTrack();
         }
-    }, [isRecordingMaster, mrUrl, playBackingTrack, stopBackingTrack]);
+    }, [isRecordingMaster, stopBackingTrack]);
 
     // Phase 14: Late Joiner State Synchronization
     // If a choir member connects AFTER the master has uploaded a score, turned on Studio Mode,
@@ -327,9 +330,17 @@ export default function MasterPage() {
             toast.success('전체 녹음이 종료되었습니다.\n수 초 내에 단원들의 파일이 업로드됩니다.', { duration: 5000 });
             setIsRecordingMaster(false);
         } else {
-            broadcastCommand('START_RECORD');
-            toast('전달 완료: 전체 동기화 녹음 시작', { icon: '🔴' });
+            const TARGET_DELAY_MS = 1500;
+            const targetTime = Date.now() + TARGET_DELAY_MS;
+            broadcastCommand('START_RECORD', { targetTime });
+
             setIsRecordingMaster(true);
+            toast(`전달 완료: ${TARGET_DELAY_MS / 1000}초 후 전체 동기화 녹음 시작`, { icon: '🔴', duration: 3000 });
+
+            // For the Conductor/Master who clicked the button: schedule playback to exact future time
+            setTimeout(() => {
+                if (mrUrl) playBackingTrack();
+            }, TARGET_DELAY_MS);
         }
     };
 

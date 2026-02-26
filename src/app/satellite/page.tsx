@@ -74,11 +74,16 @@ export default function SatellitePage() {
         } else if (action === 'START_RECORD') {
             if (isSoloRecording) return; // Prevent master from interrupting active solo take
 
+            const targetTime = payload?.targetTime || Date.now();
+
             // Wait for the actual recording hardware to start receiving data before playing MR
             // to ensure perfect synchronization between the audio blob timeline and the MR playback.
             startRecording(() => {
                 if (isMrReady) {
-                    playBackingTrack();
+                    const remainingDelay = Math.max(0, targetTime - Date.now());
+                    setTimeout(() => {
+                        playBackingTrack();
+                    }, remainingDelay);
                 }
             });
         } else if (action === 'STOP_RECORD') {
