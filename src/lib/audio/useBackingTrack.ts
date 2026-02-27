@@ -52,14 +52,14 @@ export function useBackingTrack(audioContextRef: React.MutableRefObject<AudioCon
         }
     }, [audioContextRef]);
 
-    const playBackingTrack = useCallback((initialVolume: number = 1) => {
+    const playBackingTrack = useCallback(async (initialVolume: number = 1) => {
         if (!audioContextRef.current || !mrBufferRef.current) return false;
 
         try {
             // Safari workaround: If context was auto-created in a useEffect, it will be suspended.
-            // We must resume it during this user-initiated playback event.
+            // We must AWAIT resume it during this user-initiated playback event to satisfy WebKit.
             if (audioContextRef.current.state === 'suspended') {
-                audioContextRef.current.resume();
+                await audioContextRef.current.resume();
             }
 
             if (mrSourceRef.current) {

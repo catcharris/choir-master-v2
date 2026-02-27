@@ -38,7 +38,7 @@ export function useAudioEngine(
         getRecordedBlob,
         clearRecordedBlob,
         recordError
-    } = useVocalRecorder(processedStreamRef, isStudioMode); // Processed WebAudio stream w/ Gain + Comp
+    } = useVocalRecorder(processedStreamRef, audioContextRef, isStudioMode); // Processed WebAudio stream w/ Gain + Comp
 
     const {
         preloadBackingTrack,

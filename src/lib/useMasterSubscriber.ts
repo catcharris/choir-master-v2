@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient';
 import { PitchData } from './pitch';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
-export type ServerAction = 'START_RECORD' | 'STOP_RECORD' | 'PRELOAD_MR' | 'SCORE_SYNC' | 'PAGE_SYNC' | 'SET_STUDIO_MODE' | 'CLEAR_ROOM';
+export type ServerAction = 'START_RECORD' | 'STOP_RECORD' | 'PRELOAD_MR' | 'SCORE_SYNC' | 'PAGE_SYNC' | 'SET_STUDIO_MODE' | 'CLEAR_ROOM' | 'LYRICS_SYNC';
 
 export interface SatelliteState {
     part: string;
@@ -14,7 +14,7 @@ export interface SatelliteState {
 
 export function useMasterSubscriber(
     roomId: string,
-    onCommandReceived?: (action: 'START_RECORD' | 'STOP_RECORD' | 'PRELOAD_MR' | 'SCORE_SYNC' | 'PAGE_SYNC' | 'SET_STUDIO_MODE', payloadData?: any) => void
+    onCommandReceived?: (action: ServerAction, payloadData?: any) => void
 ) {
     const [status, setStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
     const [satellites, setSatellites] = useState<Record<string, SatelliteState>>({});

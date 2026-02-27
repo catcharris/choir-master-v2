@@ -1,13 +1,16 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { encodeWav } from './wavEncoder';
 
-export function useVocalRecorder(streamRef: React.MutableRefObject<MediaStream | null>, isStudioMode: boolean = false) {
+export function useVocalRecorder(
+    streamRef: React.MutableRefObject<MediaStream | null>,
+    globalAudioContextRef: React.MutableRefObject<AudioContext | null>,
+    isStudioMode: boolean = false
+) {
     const [isRecording, setIsRecording] = useState(false);
     const [recordError, setRecordError] = useState<string | null>(null);
 
     const finalBlobRef = useRef<Blob | null>(null);
 
-    const audioContextRef = useRef<AudioContext | null>(null);
     const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
     const mediaStreamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
     const pcmDataRef = useRef<Float32Array[]>([]);
@@ -23,16 +26,18 @@ export function useVocalRecorder(streamRef: React.MutableRefObject<MediaStream |
             finalBlobRef.current = null;
             setRecordError(null);
 
-            // --- True T=0 WAV (Uncompressed PCM) Recording Pipeline ---
-            // We use WebAudio API's ScriptProcessorNode to perfectly capture audio samples
-            // exactly as they flow out of the microphone buffer, bypassing the unpredictable
-            // encoder warmup delays of native MediaRecorder.
+            if (!globalAudioContextRef.current) {
+                console.error("No global AudioContext available.");
+                setRecordError("오디오 엔진이 초기화되지 않았습니다.");
+                return;
+            }
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({
-                sampleRate: isStudioMode ? 48000 : 44100 // Slightly lower sample rate for normal mode to save space
-            });
-            audioContextRef.current = audioCtx;
+            const audioCtx = globalAudioContextRef.current;
+
+            // If the context is suspended (browser policy), wake it up
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
 
             const source = audioCtx.createMediaStreamSource(streamRef.current);
             mediaStreamSourceRef.current = source;
@@ -67,7 +72,7 @@ export function useVocalRecorder(streamRef: React.MutableRefObject<MediaStream |
     }, [streamRef, isStudioMode]);
 
     const stopRecording = useCallback(() => {
-        if (audioContextRef.current && scriptProcessorRef.current && mediaStreamSourceRef.current) {
+        if (scriptProcessorRef.current && mediaStreamSourceRef.current && globalAudioContextRef.current) {
             scriptProcessorRef.current.disconnect();
             mediaStreamSourceRef.current.disconnect();
 
@@ -80,21 +85,20 @@ export function useVocalRecorder(streamRef: React.MutableRefObject<MediaStream |
                 offset += chunk.length;
             }
 
-            const sampleRate = audioContextRef.current.sampleRate;
+            const sampleRate = globalAudioContextRef.current.sampleRate;
             // encodeWav outputs standard 16-bit PCM WAV which is universally supported
             const wavBlob = encodeWav(flatData, sampleRate, 1);
 
             finalBlobRef.current = wavBlob;
             console.log(`[${isStudioMode ? 'STUDIO' : 'NORMAL'}] WAV Recording stopped. Final Blob size:`, wavBlob.size, "SampleRate:", sampleRate);
 
-            audioContextRef.current.close().catch(console.error);
-            audioContextRef.current = null;
+            // Do NOT close the context here anymore, as it's shared globally with the PitchTracker
             scriptProcessorRef.current = null;
             mediaStreamSourceRef.current = null;
             pcmDataRef.current = [];
         }
         setIsRecording(false);
-    }, [isStudioMode]);
+    }, [isStudioMode, globalAudioContextRef]);
 
     const getRecordedBlob = useCallback(() => {
         return finalBlobRef.current;

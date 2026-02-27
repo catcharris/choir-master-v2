@@ -12,6 +12,7 @@
     "@capacitor/core": "^8.1.0",
     "@capacitor/haptics": "^8.0.1",
     "@capacitor/motion": "^8.0.0",
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.97.0",
     "dotenv": "^17.3.1",
     "lucide-react": "^0.575.0",

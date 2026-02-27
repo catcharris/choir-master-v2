@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight, Presentation } from 'lucide-react';
+import { X, Presentation, Wand2, Type, Send } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface MasterScoreModalProps {
     roomId: string;
@@ -8,6 +9,7 @@ interface MasterScoreModalProps {
     scoreUrls: string[];
     currentPage: number;
     onPageSync: (pageIndex: number) => void;
+    onBroadcastLyrics: (lyrics: string) => void;
 }
 
 export function MasterScoreModal({
@@ -16,13 +18,19 @@ export function MasterScoreModal({
     onClose,
     scoreUrls,
     currentPage,
-    onPageSync
+    onPageSync,
+    onBroadcastLyrics
 }: MasterScoreModalProps) {
     const [currentIndex, setCurrentIndex] = useState(currentPage);
 
+    // AI Lyrics States
+    const [isExtracting, setIsExtracting] = useState(false);
+    const [lyrics, setLyrics] = useState('');
+    const [isEditingLyrics, setIsEditingLyrics] = useState(false);
+
     // Keyboard support for Bluetooth Pedals (PageTurners)
     useEffect(() => {
-        if (!isOpen || scoreUrls.length === 0) return;
+        if (!isOpen || scoreUrls.length === 0 || isEditingLyrics) return;
 
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
@@ -36,7 +44,7 @@ export function MasterScoreModal({
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, currentIndex, scoreUrls.length]); // Rebind when index changes so handleNext has latest state
+    }, [isOpen, currentIndex, scoreUrls.length, isEditingLyrics]);
 
     // Sync on open or when external currentPage changes from another Master
     useEffect(() => {
@@ -73,6 +81,43 @@ export function MasterScoreModal({
         }
     };
 
+    const handleExtractLyrics = async () => {
+        if (scoreUrls.length === 0) return;
+
+        setIsExtracting(true);
+        // Only extract from the first page for now, or the current page
+        const targetUrl = scoreUrls[currentIndex];
+
+        try {
+            const res = await fetch('/api/extract/lyrics', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ imageUrl: targetUrl })
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.lyrics) {
+                setLyrics(data.lyrics);
+                setIsEditingLyrics(true);
+                toast.success('AI가 가사를 성공적으로 추출했습니다.');
+            } else {
+                toast.error(`가사 추출 실패: ${data.error}`);
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('AI 연결 중 오류가 발생했습니다.');
+        } finally {
+            setIsExtracting(false);
+        }
+    };
+
+    const handleSendLyrics = () => {
+        onBroadcastLyrics(lyrics);
+        toast.success('단원들에게 자막을 전송했습니다!');
+        setIsEditingLyrics(false);
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm">
             {/* Unified Top Navigation Header */}
@@ -88,14 +133,25 @@ export function MasterScoreModal({
                     <span className="font-bold text-sm">악보 닫기</span>
                 </button>
 
-                {/* Right: Page Indicator & Instructions */}
-                <div className="flex flex-col items-end gap-2 text-right">
-                    <div className="bg-black/60 backdrop-blur-md border border-white/10 px-5 py-2 rounded-full shadow-2xl flex items-center gap-3">
-                        <span className="font-black text-xl tracking-wider text-emerald-400">
-                            {scoreUrls.length === 0 ? "대기 중" : `${currentIndex + 1} / ${scoreUrls.length}`}
-                        </span>
-                        <Presentation size={20} className="text-emerald-400/80 animate-pulse" />
+                {/* Right: Page Indicator & AI Actions */}
+                <div className="flex flex-col items-end gap-2 text-right pointer-events-auto">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setIsEditingLyrics(!isEditingLyrics)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full border shadow-xl transition-all font-bold text-sm backdrop-blur-md ${isEditingLyrics ? "bg-amber-500 text-black border-amber-400" : "bg-black/60 text-white/80 hover:text-white border-white/10 hover:bg-black/80"}`}
+                        >
+                            <Type size={16} />
+                            자막 편집
+                        </button>
+
+                        <div className="bg-black/60 backdrop-blur-md border border-white/10 px-5 py-2 rounded-full shadow-2xl flex items-center gap-3">
+                            <span className="font-black text-xl tracking-wider text-emerald-400">
+                                {scoreUrls.length === 0 ? "대기 중" : `${currentIndex + 1} / ${scoreUrls.length}`}
+                            </span>
+                            <Presentation size={20} className="text-emerald-400/80 animate-pulse" />
+                        </div>
                     </div>
+
                     <div className="hidden sm:block text-white/40 text-xs font-bold bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm border border-white/5">
                         화면 좌/우측을 터치하여 페이지 이동
                     </div>
@@ -133,7 +189,62 @@ export function MasterScoreModal({
                         </div>
                     </div>
 
-                    {/* Navigation Buttons Removed. Relying entirely on the invisible touch zones to maximize score view. */}
+                    {/* AI Lyrics Editor Overlay */}
+                    {isEditingLyrics && (
+                        <div className="absolute right-4 sm:right-8 top-24 bottom-8 w-[90%] sm:w-[400px] max-w-sm bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-40 flex flex-col overflow-hidden animate-in slide-in-from-right text-slate-100">
+                            <div className="p-4 border-b border-white/10 flex justify-between items-center bg-slate-800/50">
+                                <h3 className="font-bold flex items-center gap-2 opacity-90">
+                                    <Wand2 size={16} className="text-indigo-400" />
+                                    AI 자막/가사 추출기
+                                </h3>
+                                <button onClick={() => setIsEditingLyrics(false)} className="text-slate-400 hover:text-white">
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            <div className="p-4 flex-1 flex flex-col gap-3">
+                                <button
+                                    onClick={handleExtractLyrics}
+                                    disabled={isExtracting}
+                                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white font-bold transition-all active:scale-95 shadow-lg"
+                                >
+                                    {isExtracting ? (
+                                        <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        <>
+                                            <Wand2 size={18} />
+                                            현재 페이지에서 가사 추출
+                                        </>
+                                    )}
+                                </button>
+
+                                <div className="flex-1 relative">
+                                    <textarea
+                                        value={lyrics}
+                                        onChange={(e) => setLyrics(e.target.value)}
+                                        placeholder="AI가 추출한 가사가 이곳에 표시됩니다. 추출 버튼을 눌러보세요."
+                                        className="w-full h-full bg-black/40 border border-white/10 rounded-xl p-4 text-base leading-relaxed font-mono focus:outline-none focus:border-indigo-500 resize-none placeholder:text-slate-600"
+                                    />
+                                    {lyrics && (
+                                        <div className="absolute top-2 right-2 text-xs text-slate-500 bg-black/60 px-2 py-1 rounded-md">
+                                            수정 가능
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="p-4 border-t border-white/10 bg-slate-800/50">
+                                <button
+                                    onClick={handleSendLyrics}
+                                    disabled={!lyrics.trim()}
+                                    className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-black text-lg rounded-xl transition-all shadow-lg active:scale-95"
+                                >
+                                    <Send size={18} />
+                                    위성으로 자막 쏘기!
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                 </div>
             ) : (

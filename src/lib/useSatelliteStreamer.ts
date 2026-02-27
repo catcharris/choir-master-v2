@@ -6,7 +6,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 export function useSatelliteStreamer(
     roomId: string,
     partName: string,
-    onCommandReceived?: (action: 'START_RECORD' | 'STOP_RECORD' | 'PRELOAD_MR' | 'SCORE_SYNC' | 'PAGE_SYNC', payloadData?: any) => void
+    onCommandReceived?: (action: 'START_RECORD' | 'STOP_RECORD' | 'PRELOAD_MR' | 'SCORE_SYNC' | 'PAGE_SYNC' | 'SET_STUDIO_MODE' | 'CLEAR_ROOM' | 'LYRICS_SYNC', payloadData?: any) => void
 ) {
     const [status, setStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
     const channelRef = useRef<RealtimeChannel | null>(null);

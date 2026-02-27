@@ -47,9 +47,13 @@ export default function MasterPage() {
             toast.success('다른 마스터 기기에서 전체 녹음을 종료했습니다.', { duration: 3000 });
         } else if (action === 'PAGE_SYNC' && payload?.page !== undefined) {
             setMasterPage(payload.page);
+        } else if (action === 'LYRICS_SYNC' && payload?.lyrics !== undefined) {
+            setCurrentLyrics(payload.lyrics);
+            toast.success('다른 마스터 기기에서 새 자막을 전송했습니다.', { duration: 3000 });
         } else if (action === 'CLEAR_ROOM') {
             setScoreUrls([]);
             setMrUrl(null);
+            setCurrentLyrics(null);
             setIsStudioMode(false);
             setIsRecordingMaster(false);
             setIsScoreModalOpen(false);
@@ -78,6 +82,9 @@ export default function MasterPage() {
     const [isUploadingScore, setIsUploadingScore] = useState(false);
     const [scoreUrls, setScoreUrls] = useState<string[]>([]);
     const [isScoreModalOpen, setIsScoreModalOpen] = useState(false);
+
+    // Phase 16: AI Lyrics Sync
+    const [currentLyrics, setCurrentLyrics] = useState<string | null>(null);
 
     // Mute MR Toggle
     const [isMrMuted, setIsMrMuted] = useState(false);
@@ -109,6 +116,7 @@ export default function MasterPage() {
         // Clear local UI state so it doesn't linger or bleed
         setMrUrl(null);
         setScoreUrls([]);
+        setCurrentLyrics(null);
         setIsStudioMode(false);
         setIsRecordingMaster(false);
         setIsScoreModalOpen(false);
@@ -122,6 +130,7 @@ export default function MasterPage() {
         // Clear local UI state to prevent cross-room bleed
         setMrUrl(null);
         setScoreUrls([]);
+        setCurrentLyrics(null);
         setIsStudioMode(false);
         setIsRecordingMaster(false);
         setIsScoreModalOpen(false);
@@ -221,10 +230,11 @@ export default function MasterPage() {
                 if (isRecordingMaster) broadcastCommand('START_RECORD');
                 if (mrUrl) broadcastCommand('PRELOAD_MR', { url: mrUrl });
                 if (scoreUrls.length > 0) broadcastCommand('SCORE_SYNC', { urls: scoreUrls });
+                if (currentLyrics) broadcastCommand('LYRICS_SYNC', { lyrics: currentLyrics });
             }, 500);
         }
         prevSatelliteCountRef.current = currentCount;
-    }, [satellites, wsStatus, isStudioMode, isRecordingMaster, mrUrl, scoreUrls, broadcastCommand]);
+    }, [satellites, wsStatus, isStudioMode, isRecordingMaster, mrUrl, scoreUrls, currentLyrics, broadcastCommand]);
 
     if (!isConnected) {
         return (
@@ -469,6 +479,10 @@ export default function MasterPage() {
                 onPageSync={(pageIndex) => {
                     setMasterPage(pageIndex);
                     broadcastCommand('PAGE_SYNC', { page: pageIndex });
+                }}
+                onBroadcastLyrics={(lyrics) => {
+                    setCurrentLyrics(lyrics);
+                    broadcastCommand('LYRICS_SYNC', { lyrics });
                 }}
             />
 

@@ -30,6 +30,7 @@ export default function SatellitePage() {
     // Score states
     const [scoreUrls, setScoreUrls] = useState<string[]>([]);
     const [currentPage, setCurrentPage] = useState(0);
+    const [currentLyrics, setCurrentLyrics] = useState<string | null>(null);
     const [isScoreOpen, setIsScoreOpen] = useState(false);
 
     // Phase 9: Solo "Homework" Recording Mode
@@ -121,6 +122,12 @@ export default function SatellitePage() {
                 setCurrentPage(payload.page);
                 setIsScoreOpen(true);
             }
+        } else if (action === 'LYRICS_SYNC') {
+            if (payload?.lyrics !== undefined) {
+                setCurrentLyrics(payload.lyrics);
+                setIsScoreOpen(true); // Auto-open modal when lyrics arrive
+                toast.success("지휘자가 새로운 가사 자막을 전송했습니다.", { duration: 4000 });
+            }
         } else if (action === 'SET_STUDIO_MODE') {
             if (payload?.enabled !== undefined) {
                 setIsStudioMode(payload.enabled);
@@ -134,6 +141,7 @@ export default function SatellitePage() {
             setMrUrl(null);
             setIsMrReady(false);
             setScoreUrls([]);
+            setCurrentLyrics(null);
             setIsScoreOpen(false);
             setIsStudioMode(false);
             setIsSoloRecording(false);
@@ -310,6 +318,7 @@ export default function SatellitePage() {
                 scoreUrls={scoreUrls}
                 currentPage={currentPage}
                 onClose={() => setIsScoreOpen(false)}
+                lyrics={currentLyrics}
             />
 
             {/* Maestro Cam PIP Widget (Draggable & Optional) */}
