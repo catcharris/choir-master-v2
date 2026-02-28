@@ -81,10 +81,11 @@ export function usePitchTracker(
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
 
-            // [CRITICAL FIX] Force 44.1kHz. If Apple Music is running in the background on iOS, 
-            // the hardware is locked to 44.1kHz. If we request the default (often 48kHz), 
-            // iOS stalls the init to spin up a hardware resampler, completely destroying our T=0 Sync assumptions.
-            const audioCtx = new AudioContextClass({ sampleRate: 44100 });
+            // [FIX REVERTED] We previously forced { sampleRate: 44100 } here to bypass iOS 17 Apple Music lock bugs.
+            // However, this forced the browser into a software-based resampling mode on devices where the native hardware
+            // mic runs at 48000Hz. This software resampler created a massive, unpredictable buffer delay, completely
+            // destroying our T=0 Native Sync timings. We must let the device choose its native hardware sample rate.
+            const audioCtx = new AudioContextClass();
             audioContextRef.current = audioCtx;
 
             const analyser = audioCtx.createAnalyser();

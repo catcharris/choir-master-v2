@@ -54,7 +54,7 @@ export function useMixerPlayback({ tracks, mrUrl }: UseMixerPlaybackProps) {
         const initAudio = async () => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-            const ctx = new AudioContextClass({ sampleRate: 44100 });
+            const ctx = new AudioContextClass();
             audioContextRef.current = ctx;
 
             const masterGain = ctx.createGain();

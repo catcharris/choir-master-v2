@@ -105,7 +105,7 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
         if (!sharedAudioCtxRef.current) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-            sharedAudioCtxRef.current = new AudioContextClass({ sampleRate: 44100 });
+            sharedAudioCtxRef.current = new AudioContextClass();
         }
 
         tracks.forEach((track, i) => {
@@ -177,7 +177,7 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
         if (!sharedAudioCtxRef.current) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-            sharedAudioCtxRef.current = new AudioContextClass({ sampleRate: 44100 });
+            sharedAudioCtxRef.current = new AudioContextClass();
         }
 
         const ws = WaveSurfer.create({

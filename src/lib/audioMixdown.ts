@@ -89,12 +89,13 @@ export async function mixdownTracks(
     userOffsetsMs: Record<string, number> = {}, // Custom user tweaks
     mrOffsetMs: number = 0    // Temporal offset from MR upload to Take start
 ): Promise<Blob> {
-    // 1. Force the decoding context to 44100Hz so ALL buffers (Opus from WebM (48k) and MRs (44.1k))
-    // are resampled to a common denominator natively by the browser. This prevents the "stretched out"
-    // slow-motion audio bug when mixing mismatched sample rate tracks.
+    // 1. We instantiate an AudioContext to decode the raw Opus/WebM and MP3 buffers natively.
+    // [FIX REVERTED] We no longer force { sampleRate: 44100 } here because it triggers heavy software resampling
+    // on devices whose native hardware rate is 48000Hz, which corrupts the T=0 Native Sync alignment offsets.
+    // Instead, we decode using the device's native rate, and let the OfflineAudioContext handle any final resampling.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const audioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
-    const audioCtx = new audioCtxClass({ sampleRate: 44100 });
+    const audioCtx = new audioCtxClass();
 
     // 1. Fetch and decode all audio
     const buffers: { buffer: AudioBuffer, trackId: string, offsetSec: number }[] = [];
