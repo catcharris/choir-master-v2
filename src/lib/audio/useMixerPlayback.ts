@@ -1,6 +1,35 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { PracticeTrack } from '../storageUtils';
 
+// Helper: Generate a synthetic Impulse Response (IR) for reverb, 
+// matching the implementation in audioMixdown.ts
+function createReverbIR(ctx: BaseAudioContext, duration: number = 2.0, decay: number = 2.0) {
+    const sampleRate = ctx.sampleRate;
+    const length = sampleRate * duration;
+    const impulse = ctx.createBuffer(2, length, sampleRate);
+    const left = impulse.getChannelData(0);
+    const right = impulse.getChannelData(1);
+
+    const lpAlpha = 0.15;
+    let lpLeft = 0;
+    let lpRight = 0;
+
+    for (let i = 0; i < length; i++) {
+        const n = 1 - i / length;
+        const env = Math.pow(n, decay);
+
+        const rawLeft = (Math.random() * 2 - 1);
+        const rawRight = (Math.random() * 2 - 1);
+
+        lpLeft = lpLeft + lpAlpha * (rawLeft - lpLeft);
+        lpRight = lpRight + lpAlpha * (rawRight - lpRight);
+
+        left[i] = lpLeft * env;
+        right[i] = lpRight * env;
+    }
+    return impulse;
+}
+
 interface UseMixerPlaybackProps {
     tracks: PracticeTrack[];
     mrUrl?: string | null;
@@ -14,6 +43,9 @@ export function useMixerPlayback({ tracks, mrUrl }: UseMixerPlaybackProps) {
 
     // Master Buss
     const masterGainRef = useRef<GainNode | null>(null);
+    const reverbConvolverRef = useRef<ConvolverNode | null>(null);
+    const reverbGainRef = useRef<GainNode | null>(null);
+    const dryGainRef = useRef<GainNode | null>(null);
     const [isReady, setIsReady] = useState(false);
 
     // Initialization and Buffer Decoding
@@ -26,8 +58,31 @@ export function useMixerPlayback({ tracks, mrUrl }: UseMixerPlaybackProps) {
             audioContextRef.current = ctx;
 
             const masterGain = ctx.createGain();
-            masterGain.connect(ctx.destination);
+
+            // Reverb Routing Setup
+            const reverbConvolver = ctx.createConvolver();
+            reverbConvolver.buffer = createReverbIR(ctx, 2.5, 4.0); // 2.5s warm hall decay
+
+            const reverbGain = ctx.createGain();
+            reverbGain.gain.value = 0; // Default off (0 wet)
+
+            const dryGain = ctx.createGain();
+            dryGain.gain.value = 1.0; // Default fully dry
+
+            // All track signals will flow into masterGain first, 
+            // then split to dryGain and reverbConvolver -> reverbGain, 
+            // then both merge into destination.
+            masterGain.connect(dryGain);
+            masterGain.connect(reverbConvolver);
+            reverbConvolver.connect(reverbGain);
+
+            dryGain.connect(ctx.destination);
+            reverbGain.connect(ctx.destination);
+
             masterGainRef.current = masterGain;
+            reverbConvolverRef.current = reverbConvolver;
+            reverbGainRef.current = reverbGain;
+            dryGainRef.current = dryGain;
 
             try {
                 // Decode MR 
@@ -79,6 +134,7 @@ export function useMixerPlayback({ tracks, mrUrl }: UseMixerPlaybackProps) {
         volumes: Record<string, number>,
         muted: Record<string, boolean>,
         panning: Record<string, number>,
+        reverbAmount: number = 0,
         userOffsetsMs: Record<string, number> = {}
     ) => {
         const ctx = audioContextRef.current;
@@ -95,6 +151,12 @@ export function useMixerPlayback({ tracks, mrUrl }: UseMixerPlaybackProps) {
         const now = ctx.currentTime;
         const PLAYBACK_DELAY = 0.1; // 100ms cushion for node scheduling
         const absoluteStartTime = now + PLAYBACK_DELAY;
+
+        // Apply initial Reverb Amount
+        if (reverbGainRef.current && dryGainRef.current) {
+            reverbGainRef.current.gain.value = reverbAmount; // Wet level
+            dryGainRef.current.gain.value = 1.0 - (reverbAmount * 0.5); // Slightly duck dry signal
+        }
 
         // Play MR
         const mrBuffer = decodedBuffersRef.current.get('__mr__');
@@ -174,16 +236,27 @@ export function useMixerPlayback({ tracks, mrUrl }: UseMixerPlaybackProps) {
         });
     }, []);
 
+    const updateReverb = useCallback((reverbAmount: number) => {
+        if (!audioContextRef.current || !reverbGainRef.current || !dryGainRef.current) return;
+
+        const ctxTime = audioContextRef.current.currentTime;
+        // Wet level
+        reverbGainRef.current.gain.setTargetAtTime(reverbAmount, ctxTime, 0.05);
+        // Dry level (ducking)
+        dryGainRef.current.gain.setTargetAtTime(1.0 - (reverbAmount * 0.5), ctxTime, 0.05);
+    }, []);
+
     const togglePlayback = useCallback((
         volumes: Record<string, number>,
         muted: Record<string, boolean>,
         panning: Record<string, number>,
+        reverbAmount: number = 0,
         userOffsetsMs: Record<string, number> = {}
     ) => {
         if (isPlaying) {
             stopPlayback();
         } else {
-            playPreview(volumes, muted, panning, userOffsetsMs);
+            playPreview(volumes, muted, panning, reverbAmount, userOffsetsMs);
         }
     }, [isPlaying, stopPlayback, playPreview]);
 
@@ -193,6 +266,7 @@ export function useMixerPlayback({ tracks, mrUrl }: UseMixerPlaybackProps) {
         togglePlayback,
         stopPlayback,
         updateVolumes,
-        updatePanning
+        updatePanning,
+        updateReverb
     };
 }

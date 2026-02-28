@@ -22,7 +22,10 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
     const [isMixerOpen, setIsMixerOpen] = useState(false);
     const [mixdownUrl, setMixdownUrl] = useState<string | null>(null);
 
-    const { isReady: playbackReady, isPlaying, togglePlayback, stopPlayback: stopLivePlayback, updateVolumes, updatePanning } = useMixerPlayback({ tracks, mrUrl });
+    const { isReady: playbackReady, isPlaying, togglePlayback, stopPlayback: stopLivePlayback, updateVolumes, updatePanning, updateReverb } = useMixerPlayback({
+        tracks,
+        mrUrl
+    });
 
     // Global reverb state
     const [reverbAmount, setReverbAmount] = useState<number>(0);
@@ -45,8 +48,16 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
     const [userOffsets, setUserOffsets] = useState<Record<string, number>>({}); // Manual +/- ms alignment
     const [masterEq, setMasterEq] = useState({ low: 0, mid: 0, high: 0 });
 
-    const handlePanChange = (trackId: string, val: number) => setPanning(prev => ({ ...prev, [trackId]: val }));
+    const handlePanChange = (trackId: string, pan: number) => {
+        const newPanning = { ...panning, [trackId]: pan };
+        setPanning(newPanning);
+        updatePanning(newPanning);
+    };
 
+    const handleReverbChange = (amount: number) => {
+        setReverbAmount(amount);
+        updateReverb(amount);
+    };
     // Initialize volume states
     useEffect(() => {
         const initVols: Record<string, number> = {};
@@ -395,38 +406,6 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
                         <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">MIXER</span>
                     </button>
 
-                    {mixdownUrl ? (
-                        <a
-                            href={mixdownUrl}
-                            download={`ChoirMaster_Mixdown_${new Date(timestamp).toLocaleString().replace(/[\/\s:]/g, '_')}.wav`}
-                            className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 h-10 px-2 sm:px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors border border-emerald-500/50 shadow-xl animate-pulse"
-                            title="음원 병합 완료! 클릭하여 저장하세요"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <Download size={13} />
-                            <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">SAVE WAV</span>
-                        </a>
-                    ) : (
-                        <button
-                            onClick={handleMixdown}
-                            disabled={isMixing}
-                            className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 h-10 px-2 sm:px-4 bg-slate-800 hover:bg-slate-700 text-teal-300 rounded-lg transition-colors border border-teal-500/30 shadow-sm disabled:opacity-50"
-                            title="보이는 믹스대로 음원 병합"
-                        >
-                            {isMixing ? (
-                                <>
-                                    <div className="w-3 h-3 border-2 border-teal-500/30 border-t-teal-400 rounded-full animate-spin" />
-                                    <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">MIXING</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Layers size={13} className="text-teal-400" />
-                                    <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">MIXDOWN v2.0.0</span>
-                                    {/* Force Cache Break 2.0.0 */}
-                                </>
-                            )}
-                        </button>
-                    )}
                 </div>
             </div>
 
@@ -441,9 +420,43 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
                                 <SlidersHorizontal size={16} />
                                 <span>Mixing Console</span>
                             </div>
-                            <button onClick={() => setIsMixerOpen(false)} className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-md transition-colors">
-                                <X size={16} />
-                            </button>
+
+                            {/* Inline Mixdown Actions */}
+                            <div className="flex items-center gap-2">
+                                {mixdownUrl ? (
+                                    <a
+                                        href={mixdownUrl}
+                                        download={`ChoirMaster_Mixdown_${new Date(timestamp).toLocaleString().replace(/[\/\s:]/g, '_')}.wav`}
+                                        className="flex items-center gap-1.5 h-8 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md transition-colors border border-emerald-500/50 shadow-lg animate-pulse"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        <Download size={12} />
+                                        <span className="font-bold text-[10px]">SAVE WAV</span>
+                                    </a>
+                                ) : (
+                                    <button
+                                        onClick={handleMixdown}
+                                        disabled={isMixing}
+                                        className="flex items-center gap-1.5 h-8 px-3 bg-slate-800 hover:bg-teal-600 text-teal-300 hover:text-white rounded-md transition-colors border border-teal-500/30 disabled:opacity-50"
+                                    >
+                                        {isMixing ? (
+                                            <>
+                                                <div className="w-3 h-3 border-2 border-teal-500/30 border-t-white rounded-full animate-spin" />
+                                                <span className="font-bold text-[10px]">MIXING...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Layers size={12} />
+                                                <span className="font-bold text-[10px]">MIXDOWN</span>
+                                            </>
+                                        )}
+                                    </button>
+                                )}
+
+                                <button onClick={() => setIsMixerOpen(false)} className="p-1.5 ml-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-md transition-colors">
+                                    <X size={16} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Warning Bar */}
@@ -479,7 +492,7 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
 
                                 {/* Half-width Reverb Slider */}
                                 <div className="flex items-center gap-2 w-full max-w-[170px] h-7 bg-slate-900/60 rounded px-3 border border-slate-700/30">
-                                    <input type="range" min="0" max="1" step="0.05" value={reverbAmount} onChange={(e) => setReverbAmount(parseFloat(e.target.value))} className="flex-1 accent-blue-500 h-1 min-w-0" />
+                                    <input type="range" min="0" max="1" step="0.05" value={reverbAmount} onChange={(e) => handleReverbChange(parseFloat(e.target.value))} className="flex-1 accent-blue-500 h-1 min-w-0" />
                                     <span className="text-[9px] font-bold text-blue-400/80 w-7 text-right tabular-nums shrink-0">{Math.round(reverbAmount * 100)}%</span>
                                 </div>
 
