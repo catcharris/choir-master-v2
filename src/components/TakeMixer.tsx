@@ -446,8 +446,9 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
                                             </>
                                         ) : (
                                             <>
-                                                <Layers size={12} />
-                                                <span className="font-bold text-[10px]">MIXDOWN</span>
+                                                <Layers size={13} className="text-teal-400" />
+                                                <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">MIXDOWN v2.0.1</span>
+                                                {/* Force Cache Break 2.0.1 */}
                                             </>
                                         )}
                                     </button>
