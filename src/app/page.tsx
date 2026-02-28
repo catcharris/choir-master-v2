@@ -32,21 +32,22 @@ export default function Home() {
         {/* Premium Hero Section (Compact) */}
         <div className="flex items-center justify-between gap-4 mt-2 sm:mt-6 mb-4 sm:mb-8 shrink-0">
           <div className="text-left">
-            <div className="flex items-center gap-2 mb-3 sm:mb-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md shadow-lg">
-                <span className="flex h-1.5 w-1.5 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-                </span>
-                <span className="text-[10px] sm:text-xs font-bold tracking-widest text-slate-300 uppercase">System Online</span>
-              </div>
-              <div className="inline-flex items-center px-2.5 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-500/30 backdrop-blur-md shadow-lg">
-                <span className="text-[10px] sm:text-xs font-bold tracking-widest text-indigo-300">v2.0.1</span>
-              </div>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md mb-3 sm:mb-4 shadow-lg">
+              <span className="flex h-1.5 w-1.5 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+              </span>
+              <span className="text-[10px] sm:text-xs font-bold tracking-widest text-slate-300 uppercase">System Online</span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tighter leading-[1.1] mb-2 sm:mb-3">
-              Choir Master <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-emerald-400">Cloud.</span>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tighter leading-[1.1] mb-2 sm:mb-3 flex flex-wrap items-end gap-x-2">
+              <span>Choir Master</span>
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-emerald-400 relative inline-block pr-8">
+                Cloud.
+                <span className="absolute top-0 right-0 -translate-y-1/2 text-[10px] sm:text-xs font-bold text-indigo-300 bg-indigo-500/20 border border-indigo-500/30 px-1.5 py-0.5 rounded-md tracking-wider shadow-lg">
+                  v2.0.1
+                </span>
+              </span>
             </h1>
             <p className="text-[13px] sm:text-base text-slate-400 font-medium tracking-tight max-w-sm sm:max-w-lg leading-snug">
               {t.hero_desc1}<br className="sm:hidden" /> {t.hero_desc2}
