@@ -18,7 +18,17 @@ export function useMetronome() {
 
     const initAudio = useCallback(() => {
         if (!audioContext.current) {
-            audioContext.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const actx = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+            // Standard iOS WebAudio Unlock Hack for Oscillators
+            const dummyBuffer = actx.createBuffer(1, 1, 22050);
+            const dummySource = actx.createBufferSource();
+            dummySource.buffer = dummyBuffer;
+            dummySource.connect(actx.destination);
+            try { dummySource.start(0); } catch (e) { }
+
+            audioContext.current = actx;
         }
     }, []);
 
@@ -69,10 +79,8 @@ export function useMetronome() {
 
     useEffect(() => {
         if (isPlaying) {
+            // Already initialized in toggle(), but safe check
             initAudio();
-            if (audioContext.current?.state === 'suspended') {
-                audioContext.current.resume();
-            }
 
             // Reset variables on start
             if (timerWorker.current === null) {
@@ -96,9 +104,12 @@ export function useMetronome() {
         };
     }, [isPlaying, scheduler, initAudio]);
 
-    const toggle = () => {
+    const toggle = async () => {
         if (!isPlaying) {
             initAudio();
+            if (audioContext.current?.state === 'suspended') {
+                await audioContext.current.resume();
+            }
         }
         // when starting from stop, always reset to the leading beat
         currentNote.current = 0;

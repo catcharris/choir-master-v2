@@ -10,6 +10,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { useMaestroCamSatellite } from '@/lib/webrtc/useMaestroCamSatellite';
 import { fetchLatestBackingTrack } from '@/lib/backingTrackUtils';
 import { fetchLatestScores } from '@/lib/scoreUtils';
+import { useServerTimeOffset } from '@/lib/useServerTimeOffset';
 
 import { SatelliteConnectForm } from '@/components/satellite/SatelliteConnectForm';
 import { TunerDisplay } from '@/components/satellite/TunerDisplay';
@@ -38,6 +39,11 @@ export default function SatellitePage() {
 
     // Phase 10: Studio Mode WAV Recording
     const [isStudioMode, setIsStudioMode] = useState(false);
+
+    // Phase 17: Scheduled Sync Playback
+    const { offset, isSynced } = useServerTimeOffset();
+    const [syncCountdownTarget, setSyncCountdownTarget] = useState<number | null>(null);
+    const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
 
     // --- Media Recorder setup for Phase 3 ---
     // The trick here is that we define our command handler BEFORE we pass it into the streamer hook,
@@ -83,8 +89,26 @@ export default function SatellitePage() {
                     playBackingTrack();
                 }
             });
+        } else if (action === 'START_RECORD_SCHEDULED') {
+            if (isSoloRecording) return;
+            if (payload?.targetTime) {
+                const currentServerTime = Date.now() + offset;
+                const remainingMs = payload.targetTime - currentServerTime;
+                const remainingSeconds = Math.max(0, remainingMs / 1000);
+
+                setSyncCountdownTarget(payload.targetTime);
+
+                // Start hardware WebAudio engine immediately, telling it to wait for exactly `remainingSeconds`
+                startRecording(() => {
+                    if (isMrReady) {
+                        // Pass 0 delay here, because startRecording already waited the exact time!
+                        playBackingTrack();
+                    }
+                }, remainingSeconds);
+            }
         } else if (action === 'STOP_RECORD') {
             if (isSoloRecording) return; // Don't stop if user is recording manually
+            setSyncCountdownTarget(null);
             stopRecording();
             stopBackingTrack();
 
@@ -126,7 +150,7 @@ export default function SatellitePage() {
             if (payload?.lyrics !== undefined) {
                 setCurrentLyrics(payload.lyrics);
                 setIsScoreOpen(true); // Auto-open modal when lyrics arrive
-                toast.success("지휘자가 새로운 가사 자막을 전송했습니다.", { duration: 4000 });
+                // Intentionally removed toast to prevent obstructing the sheet music
             }
         } else if (action === 'SET_STUDIO_MODE') {
             if (payload?.enabled !== undefined) {
@@ -163,6 +187,30 @@ export default function SatellitePage() {
     }, [broadcastPitch]);
 
     const isConnected = wsStatus === 'connected';
+
+    // Phase 17: Scheduled Countdown UI Loop (Visual Only!)
+    useEffect(() => {
+        if (!syncCountdownTarget) {
+            setCountdownSeconds(null);
+            return;
+        }
+
+        const interval = setInterval(() => {
+            const nowServerTime = Date.now() + offset;
+            const remainingMs = syncCountdownTarget - nowServerTime;
+
+            if (remainingMs <= 0) {
+                clearInterval(interval);
+                setSyncCountdownTarget(null);
+                setCountdownSeconds(null);
+                toast('동기화 녹음 큐 시작!', { icon: '🔴', duration: 1500 });
+            } else {
+                setCountdownSeconds(Math.ceil(remainingMs / 1000));
+            }
+        }, 50);
+
+        return () => clearInterval(interval);
+    }, [syncCountdownTarget, offset]);
 
     // Phase 14-C: Late Joiner / Offline Master Self-Hydration
     // If a satellite joins the room and the Master is closed/refreshed/offline,
@@ -262,6 +310,15 @@ export default function SatellitePage() {
             {/* Cinematic Background Glows */}
             <div className="absolute top-0 right-0 w-[120vw] max-w-xl h-80 bg-emerald-600/10 blur-[100px] rounded-[100%] pointer-events-none -translate-y-1/2 translate-x-1/4" />
             <div className="absolute bottom-0 left-0 w-[120vw] max-w-xl h-80 bg-indigo-600/15 blur-[100px] rounded-[100%] pointer-events-none translate-y-1/2 -translate-x-1/4" />
+
+            {/* Phase 17: Countdown Overlay UI */}
+            {syncCountdownTarget && countdownSeconds !== null && (
+                <div className="absolute inset-0 z-[200] flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-200 pointer-events-none">
+                    <div className="text-rose-400 font-extrabold text-[150px] md:text-[250px] leading-none animate-bounce shadow-rose-500/50 drop-shadow-2xl">
+                        {countdownSeconds}
+                    </div>
+                </div>
+            )}
 
             {/* Container */}
             <div className="relative z-10 w-full h-full max-w-md md:max-w-2xl lg:max-w-4xl flex flex-col">

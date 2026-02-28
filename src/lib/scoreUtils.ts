@@ -17,7 +17,12 @@ export async function uploadScoreImages(files: FileList | File[], roomId: string
 
             if (existingFiles && existingFiles.length > 0) {
                 // Ignore empty folder placeholder if it's the only thing left
-                const validFiles = existingFiles.filter(f => f.name !== '.emptyFolderPlaceholder');
+                // Also ignore lyrics_export text files so we don't delete them
+                const validFiles = existingFiles.filter(f =>
+                    f.name !== '.emptyFolderPlaceholder' &&
+                    !f.name.startsWith('lyrics_export_') &&
+                    f.name.startsWith('page_')
+                );
 
                 if (validFiles.length === 0) {
                     hasMoreFiles = false;
@@ -111,7 +116,12 @@ export async function fetchLatestScores(roomId: string): Promise<string[]> {
 
             for (const file of data) {
                 // Ignore any hidden/dummy files like .emptyFolderPlaceholder
-                if (file.name === '.emptyFolderPlaceholder') continue;
+                // Also ignore any exported lyrics text files
+                if (
+                    file.name === '.emptyFolderPlaceholder' ||
+                    file.name.startsWith('lyrics_export_') ||
+                    !file.name.startsWith('page_')
+                ) continue;
 
                 const filePath = `${folderPath}/${file.name}`;
                 const { data: urlData } = supabase.storage

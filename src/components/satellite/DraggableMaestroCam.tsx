@@ -37,7 +37,7 @@ export function DraggableMaestroCam({ stream, onClose }: DraggableMaestroCamProp
 
     return (
         <div
-            className="fixed z-[70] w-32 sm:w-40 aspect-[3/4] bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden cursor-move shadow-black/50"
+            className="fixed z-[150] w-32 sm:w-40 aspect-[3/4] bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden cursor-move shadow-black/50"
             style={{
                 bottom: '8rem',
                 right: '1.5rem',

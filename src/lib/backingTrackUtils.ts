@@ -125,3 +125,43 @@ export async function fetchAllRoomBackingTracks(roomId: string): Promise<{ url: 
         return [];
     }
 }
+
+/**
+ * Sends a YouTube URL to the local Python Microservice to extract audio and upload to Supabase.
+ * Returns the public URL of the extracted file, or null if it failed.
+ */
+export async function importYoutubeAsBackingTrack(youtubeUrl: string, roomId: string): Promise<string | null> {
+    if (!youtubeUrl || !roomId) return null;
+
+    try {
+        const b64EncodeUnicode = (str: string) => btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode(parseInt(p1, 16))));
+        const safeRoomId = b64EncodeUnicode(roomId.trim()).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+        const response = await fetch("http://localhost:8000/api/extract", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                youtube_url: youtubeUrl,
+                room_id: safeRoomId
+            })
+        });
+
+        if (!response.ok) {
+            const errBody = await response.text();
+            console.error("YouTube Extraction Python API Failed:", response.status, errBody);
+            return null;
+        }
+
+        const data = await response.json();
+        if (data && data.success && data.url) {
+            return data.url;
+        }
+        return null;
+
+    } catch (err) {
+        console.error("Failed to reach local Python Extractor Microservice:", err);
+        return null;
+    }
+}

@@ -64,10 +64,13 @@ export function useAudioEngine(
         getRecordedBlob,
         clearRecordedBlob,
 
-        // Backing Track (Web Audio Playback)
+        // Backing Track Player
         preloadBackingTrack,
         playBackingTrack,
         stopBackingTrack,
-        setBackingTrackVolume
+        setBackingTrackVolume,
+
+        // Expose Context for hardware UI unlocks
+        audioContextRef
     };
 }

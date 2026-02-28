@@ -1,5 +1,4 @@
-import React from 'react';
-import { LogOut, Mic, UploadCloud } from 'lucide-react';
+import { LogOut, UploadCloud, Play, Square } from 'lucide-react';
 import { RecordingProfile } from '@/lib/audio/usePitchTracker';
 
 interface RecordingControlsProps {
@@ -65,24 +64,26 @@ export function RecordingControls({
                 </button>
             )}
 
-            {/* Solo Homework Recording Button */}
-            {isMrReady && !isRecording && (
+            {/* Solo Practice (Play/Stop MR) Button */}
+            {(isMrReady && !isRecording) && (
                 <button
                     onClick={onSoloRecordToggle}
-                    className="w-full flex items-center justify-center gap-3 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-2xl transition-all shadow-[0_0_20px_rgba(5,150,105,0.3)] hover:scale-[1.02] active:scale-[0.98]"
+                    className={`w-full flex items-center justify-center gap-3 py-4 font-bold rounded-2xl transition-all shadow-lg active:scale-[0.98] ${isSoloRecording
+                            ? "bg-slate-700 hover:bg-slate-600 border border-slate-500 text-white"
+                            : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-[0_0_20px_rgba(5,150,105,0.3)] hover:scale-[1.02]"
+                        }`}
                 >
-                    <Mic size={22} className={isSoloRecording ? "" : "animate-bounce"} />
-                    <span className="text-lg">혼자 연습 (MR 자동재생)</span>
-                </button>
-            )}
-
-            {isSoloRecording && (
-                <button
-                    onClick={onSoloRecordToggle}
-                    className="w-full flex items-center justify-center gap-3 py-4 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 text-white font-bold rounded-2xl transition-all shadow-[0_0_30px_rgba(220,38,38,0.5)] animate-pulse hover:scale-[1.02] active:scale-[0.98] border border-red-400"
-                >
-                    <UploadCloud size={24} />
-                    <span className="text-xl tracking-wide">숙제 제출 (녹음 종료)</span>
+                    {isSoloRecording ? (
+                        <>
+                            <Square size={20} className="fill-white/80" />
+                            <span className="text-xl tracking-wide">혼자 연습 중지</span>
+                        </>
+                    ) : (
+                        <>
+                            <Play size={20} className="fill-white/80 ml-1" />
+                            <span className="text-lg">혼자 연습 (MR 재생)</span>
+                        </>
+                    )}
                 </button>
             )}
 

@@ -95,6 +95,7 @@ export function RecordingsDrawer({
                                     tracks={group.tracks}
                                     timestamp={group.timestamp}
                                     mrUrl={resolvedMrUrl}
+                                    mrOffsetMs={correctMr ? Math.max(0, group.timestamp - correctMr.timestamp) : 0}
                                     onDeleteComplete={onLoadTracks}
                                 />
                             );

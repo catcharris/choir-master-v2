@@ -113,12 +113,10 @@ export async function mixdownTracks(
             const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
             console.log("MR decoded successfully!", audioBuffer.duration);
-            // Default MR offset needs to be explicitly pushed forward by the hardcoded REC delay 
-            // so it aligns with satellites that started recording exactly at that delayed moment
-            const baseMrOffsetSec = START_RECORD_DELAY_SEC + (mrOffsetMs / 1000);
+            // The MR track represents the absolute start of our performance timeline (0.0).
+            // We only apply manual user tweaks to it.
             const userMrOffsetSec = (userOffsetsMs['__mr__'] || 0) / 1000;
-            const finalMrOffsetSec = baseMrOffsetSec + userMrOffsetSec;
-            buffers.push({ buffer: audioBuffer, trackId: '__mr__', offsetSec: Math.max(0, finalMrOffsetSec) });
+            buffers.push({ buffer: audioBuffer, trackId: '__mr__', offsetSec: userMrOffsetSec });
         } catch (err) {
             console.error("CRITICAL: Failed to include MR in mixdown:", err);
             // We throw here now so the user actually sees an error toast if MR completely fails
@@ -134,11 +132,15 @@ export async function mixdownTracks(
         const arrayBuffer = await response.arrayBuffer();
 
         const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        // True T=0 Native Sync Pattern
+        // The vocal recording physically started at the EXACT same millisecond the MR began playing
+        // due to our hardware .onaudioprocess trigger patent.
+        // Therefore, both MR and Vocals inherently start at Timeline 0.0.
         const baseOffsetMs = track.offsetMs || 0;
         const userOffsetMs = userOffsetsMs[track.id] || 0;
 
-        // Final offset = Hardware Latency + User Custom Tweak
-        const finalOffsetSec = (baseOffsetMs + userOffsetMs) / 1000;
+        // Final offset = Hardware Latency Compensation + User Custom Tweak
+        const finalOffsetSec = ((baseOffsetMs + userOffsetMs) / 1000);
 
         buffers.push({ buffer: audioBuffer, trackId: track.id, offsetSec: finalOffsetSec });
     }

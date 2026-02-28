@@ -52,18 +52,23 @@ export function useBackingTrack(audioContextRef: React.MutableRefObject<AudioCon
         }
     }, [audioContextRef]);
 
-    const playBackingTrack = useCallback(async (initialVolume: number = 1) => {
-        if (!audioContextRef.current || !mrBufferRef.current) return false;
+    const playBackingTrack = useCallback((initialVolume: number = 1, delaySeconds: number = 0) => {
+        if (!audioContextRef.current || !mrBufferRef.current) {
+            console.error("Cannot play MR: AudioContext or mrBuffer is null");
+            // @ts-ignore
+            if (typeof window !== 'undefined' && window.toast) window.toast.error("MR Error: Buffer or Context is null");
+            return false;
+        }
 
         try {
-            // Safari workaround: If context was auto-created in a useEffect, it will be suspended.
-            // We must AWAIT resume it during this user-initiated playback event to satisfy WebKit.
+            // Safari explicitly suspends context when not actively emitting sound.
+            // Aggressively attempt to wake it up right before injecting the new node.
             if (audioContextRef.current.state === 'suspended') {
-                await audioContextRef.current.resume();
+                audioContextRef.current.resume().catch(e => console.error("Context resume failed", e));
             }
 
             if (mrSourceRef.current) {
-                try { mrSourceRef.current.stop(); } catch (e) { }
+                try { mrSourceRef.current.stop(); } catch (e) { /* ignore */ }
                 mrSourceRef.current.disconnect();
             }
 
@@ -71,17 +76,30 @@ export function useBackingTrack(audioContextRef: React.MutableRefObject<AudioCon
             source.buffer = mrBufferRef.current;
 
             const gainNode = audioContextRef.current.createGain();
+            console.log(`Setting MR Volume to: ${initialVolume}`);
             gainNode.gain.value = initialVolume;
             mrGainRef.current = gainNode;
 
             source.connect(gainNode);
             gainNode.connect(audioContextRef.current.destination);
-            source.start(0);
+
+            // Phase 17: Scheduled Sync Playback
+            if (delaySeconds <= 0) {
+                source.start(0); // Fire instantly and powerfully
+                console.log("MR track PLAYING instantly.");
+                if (typeof window !== 'undefined' && (window as any).toast) (window as any).toast(`MR 즉시 재생 (Vol:${initialVolume})`, { icon: '🔊', duration: 3000 });
+            } else {
+                const startTime = audioContextRef.current.currentTime + delaySeconds;
+                source.start(startTime);
+                console.log(`MR track SCHEDULED for ${delaySeconds}s in the future.`);
+                if (typeof window !== 'undefined' && (window as any).toast) (window as any).toast(`MR 예약됨: ${delaySeconds.toFixed(1)}초 뒤 (Vol:${initialVolume})`, { icon: '⏱️', duration: 3000 });
+            }
 
             mrSourceRef.current = source;
             return true;
-        } catch (err) {
+        } catch (err: any) {
             console.error("Failed to play backing track:", err);
+            if (typeof window !== 'undefined' && (window as any).toast) (window as any).toast.error(`MR AudioContext 에러: ${err.message}`, { duration: 5000 });
             return false;
         }
     }, [audioContextRef]);

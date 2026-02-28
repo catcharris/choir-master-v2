@@ -3,10 +3,12 @@ import { supabase } from './supabaseClient';
 import { PitchData } from './pitch';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
+export type ServerAction = 'START_RECORD' | 'STOP_RECORD' | 'PRELOAD_MR' | 'SCORE_SYNC' | 'PAGE_SYNC' | 'SET_STUDIO_MODE' | 'CLEAR_ROOM' | 'LYRICS_SYNC' | 'ALL_LYRICS_SYNC';
+
 export function useSatelliteStreamer(
     roomId: string,
     partName: string,
-    onCommandReceived?: (action: 'START_RECORD' | 'STOP_RECORD' | 'PRELOAD_MR' | 'SCORE_SYNC' | 'PAGE_SYNC' | 'SET_STUDIO_MODE' | 'CLEAR_ROOM' | 'LYRICS_SYNC', payloadData?: any) => void
+    onCommandReceived?: (action: ServerAction, payloadData?: any) => void
 ) {
     const [status, setStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
     const channelRef = useRef<RealtimeChannel | null>(null);

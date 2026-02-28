@@ -28,12 +28,8 @@ export function SatelliteScoreModal({
         setLocalPage(masterPage);
     }
 
-    // Auto-switch to lyrics view if lyrics arrive while modal is open
-    useEffect(() => {
-        if (lyrics && isOpen && viewMode !== 'lyrics') {
-            setViewMode('lyrics');
-        }
-    }, [lyrics, isOpen]);
+    // Intentionally removed auto-switch to lyrics view. 
+    // The Score view is the priority for the choir. Singers must manually opt-in to 'lyrics' view.
 
     if (!isOpen) return null;
 
@@ -53,33 +49,33 @@ export function SatelliteScoreModal({
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black backdrop-blur-md pb-safe">
 
             {/* Top Navigation & Toggles */}
-            <div className="absolute top-0 left-0 w-full p-4 sm:p-6 z-[120] bg-gradient-to-b from-black/80 to-transparent flex items-start justify-between pointer-events-none">
+            <div className="absolute top-0 left-0 w-full p-4 sm:p-6 z-[120] bg-gradient-to-b from-black/80 to-transparent flex items-start justify-between gap-2 sm:gap-4 pointer-events-none">
                 {/* Left: Close Button */}
                 <button
                     onClick={onClose}
-                    className="pointer-events-auto flex items-center gap-2 pl-2 pr-4 py-2 bg-black/40 hover:bg-black/80 border border-white/10 text-white/80 hover:text-white rounded-full backdrop-blur-md shadow-2xl transition-all active:scale-95 group"
+                    className="pointer-events-auto shrink-0 flex items-center gap-1.5 sm:gap-2 pl-1.5 pr-4 py-1.5 bg-black/40 hover:bg-black/60 border border-white/20 text-white/80 hover:text-white rounded-full backdrop-blur-xl shadow-2xl transition-all active:scale-95 group"
                 >
-                    <div className="p-1 bg-white/10 rounded-full group-hover:bg-red-500/20 group-hover:text-red-400 transition-colors">
-                        <X size={18} />
+                    <div className="p-1.5 sm:p-2 bg-white/10 rounded-full group-hover:bg-red-500/80 group-hover:text-white transition-colors">
+                        <X size={16} />
                     </div>
-                    <span className="font-bold text-sm">닫기</span>
+                    <span className="font-extrabold text-[13px] sm:text-sm whitespace-nowrap">닫기</span>
                 </button>
 
                 {/* Center: View Toggle (Only show if lyrics exist) */}
                 {lyrics && (
-                    <div className="pointer-events-auto flex items-center bg-black/60 p-1 rounded-full border border-white/10 backdrop-blur-md">
+                    <div className="pointer-events-auto shrink-0 flex items-center bg-black/40 p-1.5 rounded-full border border-white/20 backdrop-blur-xl shadow-2xl">
                         <button
                             onClick={() => setViewMode('score')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-all ${viewMode === 'score' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-full font-extrabold text-[13px] sm:text-sm transition-all duration-300 whitespace-nowrap ${viewMode === 'score' ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)] scale-100' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 scale-95'}`}
                         >
-                            <ImageIcon size={16} />
+                            <ImageIcon size={16} className={viewMode === 'score' ? 'text-white' : 'text-slate-500'} />
                             악보 보기
                         </button>
                         <button
                             onClick={() => setViewMode('lyrics')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-all ${viewMode === 'lyrics' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-full font-extrabold text-[13px] sm:text-sm transition-all duration-300 whitespace-nowrap ${viewMode === 'lyrics' ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.5)] scale-100' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 scale-95'}`}
                         >
-                            <Type size={16} />
+                            <Type size={16} className={viewMode === 'lyrics' ? 'text-white' : 'text-slate-500'} />
                             가사 보기
                         </button>
                     </div>

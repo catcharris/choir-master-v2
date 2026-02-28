@@ -197,33 +197,36 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
             wavesurferRefs.current.forEach(ws => ws?.pause());
             mrWavesurferRef.current?.pause();
         } else {
-            // MR is positioned based on its temporally calculated offset relative to the choir recording
+            // MR represents Timeline 0.0 - It always plays from the absolute beginning
             if (mrWavesurferRef.current) {
                 // In iOS Safari, we must ensure it's not trying to seek while uninitialized
                 try {
-                    mrWavesurferRef.current.setTime(mrOffsetMs / 1000);
+                    mrWavesurferRef.current.setTime(0);
                     mrWavesurferRef.current.play();
                 } catch (e) { console.error("mrWavesurfer play error", e); }
             }
 
             // Each satellite captures audio at a slightly different offset
-            // We stagger playback to mirror the zero-latency `audioMixdown` timeline
+            // We stagger playback to fundamentally align with the MR Timeline 0.0
             wavesurferRefs.current.forEach((ws, idx) => {
                 const track = tracks[idx];
                 if (ws && track) {
                     ws.setTime(0);
-                    const offsetMs = track.offsetMs || 0;
+                    const baseOffsetMs = track.offsetMs || 0;
 
-                    if (offsetMs > 0) {
+                    // True T=0 Native Sync Pattern
+                    // MR and Vocals are perfectly aligned at the hardware level. No wall-clock gap required.
+                    const totalWaitMs = baseOffsetMs;
+
+                    if (totalWaitMs > 0) {
                         setTimeout(() => {
-                            if (mrWavesurferRef.current?.isPlaying()) {
-                                ws.play();
-                            }
-                        }, offsetMs);
-                    } else if (offsetMs < 0) {
-                        // Negative offset = vocal started 'before' the MR timeline 0.0 (e.g encoder lag prepush)
-                        // We must skip the first N ms of the audio buffer immediately.
-                        ws.setTime(Math.abs(offsetMs) / 1000);
+                            // Abort playback if the user clicked stop during the countdown
+                            if (mrUrl && !mrWavesurferRef.current?.isPlaying()) return;
+                            ws.play();
+                        }, totalWaitMs);
+                    } else if (totalWaitMs < 0) {
+                        // Negative offset = vocal started 'before' the MR timeline 0.0 
+                        ws.setTime(Math.abs(totalWaitMs) / 1000);
                         ws.play();
                     } else {
                         ws.play();
@@ -451,7 +454,8 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
                             ) : (
                                 <>
                                     <Layers size={13} className="text-teal-400" />
-                                    <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">MIXDOWN v1.9.2</span>
+                                    <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">MIXDOWN v1.9.12</span>
+                                    {/* Force Cache Break 1.9.12 */}
                                 </>
                             )}
                         </button>

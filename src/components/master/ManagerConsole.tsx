@@ -9,6 +9,8 @@ interface ManagerConsoleProps {
     mrUrl: string | null;
     onToggleRecord: () => void;
     onMRUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onYoutubeImport: (url: string) => void;
+    isImportingYoutube: boolean;
     onScoreUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
     isUploadingScore: boolean;
     onOpenDrawer: () => void;
@@ -26,6 +28,8 @@ export function ManagerConsole({
     mrUrl,
     onToggleRecord,
     onMRUpload,
+    onYoutubeImport,
+    isImportingYoutube,
     onScoreUpload,
     isUploadingScore,
     onOpenDrawer,
@@ -41,7 +45,40 @@ export function ManagerConsole({
                 테크니컬 스튜디오 콘솔
             </h2>
 
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4">
+            {/* YouTube Import Row */}
+            <div className="flex flex-col sm:flex-row gap-2 mb-4">
+                <input
+                    type="url"
+                    id="youtube-url-input"
+                    placeholder="https://youtube.com/watch?v=..."
+                    disabled={isImportingYoutube}
+                    className="flex-1 bg-slate-950/50 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            const val = e.currentTarget.value;
+                            if (val) {
+                                onYoutubeImport(val);
+                                e.currentTarget.value = '';
+                            }
+                        }
+                    }}
+                />
+                <button
+                    disabled={isImportingYoutube}
+                    onClick={() => {
+                        const input = document.getElementById('youtube-url-input') as HTMLInputElement;
+                        if (input && input.value) {
+                            onYoutubeImport(input.value);
+                            input.value = '';
+                        }
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-xl transition-colors shadow-lg shadow-indigo-500/20 whitespace-nowrap"
+                >
+                    {isImportingYoutube ? '추출 중...' : '유튜브 MR 가져오기'}
+                </button>
+            </div>
+
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2 sm:gap-3 md:gap-4">
 
                 {/* 1. Studio Mode */}
                 <button

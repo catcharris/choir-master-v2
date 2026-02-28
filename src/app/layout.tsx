@@ -50,15 +50,19 @@ export default function RootLayout({
           position="top-center"
           containerStyle={{ top: '50vh', transform: 'translateY(-50%)' }}
           toastOptions={{
+            duration: 3000, // Explicitly set global duration
             style: {
               background: '#1e293b', // slate-800
               color: '#f8fafc', // slate-50
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '1rem',
               backdropFilter: 'blur(10px)',
-              padding: '16px 24px',
+              padding: '12px 18px', // Reduced padding
               fontFamily: 'var(--font-geist-sans)',
-              fontWeight: 600,
+              fontWeight: 400,      // Thinner font
+              fontSize: '14px',     // Smaller text
+              lineHeight: '1.4',
+              pointerEvents: 'none', // Prevent iOS tap-to-pause from keeping toasts permanently stuck
             },
             success: {
               iconTheme: {
@@ -67,6 +71,7 @@ export default function RootLayout({
               },
             },
             error: {
+              duration: 4000, // Errors stay a bit longer, but still have no pointer events
               iconTheme: {
                 primary: '#ef4444', // red-500
                 secondary: '#fff',

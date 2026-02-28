@@ -15,7 +15,10 @@ export function useVocalRecorder(
     const mediaStreamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
     const pcmDataRef = useRef<Float32Array[]>([]);
 
-    const startRecording = useCallback((onStart?: () => void) => {
+    // Tracks the exact physical delay between "Record Command" and "Microphone Data Received"
+    const warmupOffsetRef = useRef<number>(0);
+
+    const startRecording = useCallback((onStart?: () => void, delaySeconds: number = 0) => {
         if (!streamRef.current) {
             console.error("Cannot start recording: No active microphone stream.");
             setRecordError("마이크 스트림이 활성화되지 않았습니다.");
@@ -49,11 +52,22 @@ export function useVocalRecorder(
             pcmDataRef.current = [];
 
             let isFirstFrame = true;
+            const targetWebAudioTime = audioCtx.currentTime + delaySeconds;
+            warmupOffsetRef.current = 0;
 
             processor.onaudioprocess = (e) => {
-                if (isFirstFrame && onStart) {
+                // Phase 17: Scheduled Sync Playback
+                // Drop frames until we perfectly match the master's scheduled server time.
+                if (audioCtx.currentTime < targetWebAudioTime) {
+                    return;
+                }
+
+                if (isFirstFrame) {
                     isFirstFrame = false;
-                    onStart(); // Trigger MR playback on the exact physical millisecond the mic yields data
+                    // TRUE T=0 NATIVE SYNC: Record the exact difference between the "scheduled start" and "actual arrival"
+                    warmupOffsetRef.current = Math.max(0, audioCtx.currentTime - targetWebAudioTime);
+                    console.log(`[SYNC] Hardware warmup captured: ${warmupOffsetRef.current.toFixed(4)}s`);
+                    if (onStart) onStart(); // Trigger MR playback mechanically
                 }
                 const inputData = e.inputBuffer.getChannelData(0);
                 // Copy data because the buffer is reused
@@ -86,8 +100,19 @@ export function useVocalRecorder(
             }
 
             const sampleRate = globalAudioContextRef.current.sampleRate;
+
+            // Apply the T=0 Native Sync warmup offset by shifting the PCM data array
+            // We trim off the silence/delay at the beginning of the buffer exactly matching the hardware wakeup gap
+            const trimSamples = Math.floor(warmupOffsetRef.current * sampleRate);
+            let finalPcmData = flatData;
+
+            if (trimSamples > 0 && trimSamples < flatData.length) {
+                console.log(`[SYNC] Trimming ${trimSamples} hardware latency warmup samples from beginning of blob.`);
+                finalPcmData = flatData.slice(trimSamples);
+            }
+
             // encodeWav outputs standard 16-bit PCM WAV which is universally supported
-            const wavBlob = encodeWav(flatData, sampleRate, 1);
+            const wavBlob = encodeWav(finalPcmData, sampleRate, 1);
 
             finalBlobRef.current = wavBlob;
             console.log(`[${isStudioMode ? 'STUDIO' : 'NORMAL'}] WAV Recording stopped. Final Blob size:`, wavBlob.size, "SampleRate:", sampleRate);

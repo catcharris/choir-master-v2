@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient';
 import { PitchData } from './pitch';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
-export type ServerAction = 'START_RECORD' | 'STOP_RECORD' | 'PRELOAD_MR' | 'SCORE_SYNC' | 'PAGE_SYNC' | 'SET_STUDIO_MODE' | 'CLEAR_ROOM' | 'LYRICS_SYNC';
+export type ServerAction = 'START_RECORD' | 'STOP_RECORD' | 'PRELOAD_MR' | 'SCORE_SYNC' | 'PAGE_SYNC' | 'SET_STUDIO_MODE' | 'CLEAR_ROOM' | 'LYRICS_SYNC' | 'ALL_LYRICS_SYNC' | 'START_RECORD_SCHEDULED';
 
 export interface SatelliteState {
     part: string;
@@ -23,6 +23,7 @@ export function useMasterSubscriber(
     // Throttle React state updates to avoid rendering 40x a second
     const pendingStateRef = useRef<Record<string, SatelliteState>>({});
     const lastRenderTimeRef = useRef<number>(0);
+    const clientIdRef = useRef(crypto.randomUUID());
 
     // Keep callback fresh without triggering re-renders
     const commandCallbackRef = useRef(onCommandReceived);
@@ -54,8 +55,11 @@ export function useMasterSubscriber(
                 }
             })
             .on('broadcast', { event: 'master_command' }, ({ payload }) => {
+                // Ignore commands sent by our self
+                if (payload?.senderId === clientIdRef.current) return;
+
                 if (commandCallbackRef.current && payload?.action) {
-                    // console.log("Master received its own/another master's command:", payload.action);
+                    // console.log("Master received another master's command:", payload.action);
                     commandCallbackRef.current(payload.action, payload);
                 }
             })
@@ -124,7 +128,12 @@ export function useMasterSubscriber(
      */
     const broadcastCommand = useCallback((action: ServerAction, payloadData?: Record<string, any>) => {
         if (channelRef.current && status === 'connected') {
-            const payload: any = { action, ...payloadData, timestamp: Date.now() };
+            const payload: any = {
+                action,
+                senderId: clientIdRef.current,
+                ...payloadData,
+                timestamp: Date.now()
+            };
 
             channelRef.current.send({
                 type: 'broadcast',
