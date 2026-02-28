@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Play, Pause, Square, Volume2, VolumeX, Download, Layers, Waves, AlertTriangle, Settings2, X, SlidersHorizontal } from 'lucide-react';
 import { PracticeTrack, deleteRoomTracks } from '@/lib/storageUtils';
 import { mixdownTracks } from '@/lib/audioMixdown';
+import { useMixerPlayback } from '@/lib/audio/useMixerPlayback';
 import WaveSurfer from 'wavesurfer.js';
 import toast from 'react-hot-toast';
 
@@ -15,12 +16,13 @@ interface TakeMixerProps {
 }
 
 export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, onDeleteComplete }: TakeMixerProps) {
-    const [isPlaying, setIsPlaying] = useState(false);
     const [isMixing, setIsMixing] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
     const [isMixerOpen, setIsMixerOpen] = useState(false);
     const [mixdownUrl, setMixdownUrl] = useState<string | null>(null);
+
+    const { isReady: playbackReady, isPlaying, togglePlayback, stopPlayback: stopLivePlayback, updateVolumes, updatePanning } = useMixerPlayback({ tracks, mrUrl });
 
     // Global reverb state
     const [reverbAmount, setReverbAmount] = useState<number>(0);
@@ -114,8 +116,7 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
             });
 
             ws.on('finish', () => {
-                const anyPlaying = refs.some(w => w?.isPlaying());
-                if (!anyPlaying) setIsPlaying(false);
+                // Playback state is now managed by useMixerPlayback
             });
             ws.on('play', () => setTrackPlaying(p => ({ ...p, [track.id]: true })));
             ws.on('pause', () => setTrackPlaying(p => ({ ...p, [track.id]: false })));
@@ -140,7 +141,12 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
             URL.revokeObjectURL(mixdownUrl);
             setMixdownUrl(null);
         }
-    }, [volumes, muted, panning, masterEq, reverbAmount, userOffsets, mrOffsetMs]);
+
+        // Push realtime updates to the live audio engine
+        updateVolumes(volumes, muted);
+        updatePanning(panning);
+
+    }, [volumes, muted, panning, masterEq, reverbAmount, userOffsets, mrOffsetMs, mixdownUrl, updateVolumes, updatePanning]);
 
     // Clean up object url on unmount
     useEffect(() => {
@@ -175,7 +181,7 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
         });
 
         ws.on('finish', () => {
-            setIsPlaying(false);
+            // Playback state is now managed by useMixerPlayback
         });
         ws.on('play', () => setTrackPlaying(p => ({ ...p, '__mr__': true })));
         ws.on('pause', () => setTrackPlaying(p => ({ ...p, '__mr__': false })));
@@ -193,48 +199,24 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
     }, [mrUrl]);
 
     const togglePlay = () => {
+        // Stop WaveSurfers visually
         if (isPlaying) {
             wavesurferRefs.current.forEach(ws => ws?.pause());
             mrWavesurferRef.current?.pause();
         } else {
-            // MR represents Timeline 0.0 - It always plays from the absolute beginning
+            // Start visual playheads at 0
             if (mrWavesurferRef.current) {
-                // In iOS Safari, we must ensure it's not trying to seek while uninitialized
-                try {
-                    mrWavesurferRef.current.setTime(0);
-                    mrWavesurferRef.current.play();
-                } catch (e) { console.error("mrWavesurfer play error", e); }
+                try { mrWavesurferRef.current.setTime(0); mrWavesurferRef.current.play(); } catch (e) { }
             }
-
-            // Each satellite captures audio at a slightly different offset
-            // We stagger playback to fundamentally align with the MR Timeline 0.0
-            wavesurferRefs.current.forEach((ws, idx) => {
-                const track = tracks[idx];
-                if (ws && track) {
-                    ws.setTime(0);
-                    const baseOffsetMs = track.offsetMs || 0;
-
-                    // True T=0 Native Sync Pattern
-                    // MR and Vocals are perfectly aligned at the hardware level. No wall-clock gap required.
-                    const totalWaitMs = baseOffsetMs;
-
-                    if (totalWaitMs > 0) {
-                        setTimeout(() => {
-                            // Abort playback if the user clicked stop during the countdown
-                            if (mrUrl && !mrWavesurferRef.current?.isPlaying()) return;
-                            ws.play();
-                        }, totalWaitMs);
-                    } else if (totalWaitMs < 0) {
-                        // Negative offset = vocal started 'before' the MR timeline 0.0 
-                        ws.setTime(Math.abs(totalWaitMs) / 1000);
-                        ws.play();
-                    } else {
-                        ws.play();
-                    }
+            wavesurferRefs.current.forEach((ws) => {
+                if (ws) {
+                    try { ws.setTime(0); ws.play(); } catch (e) { }
                 }
             });
         }
-        setIsPlaying(!isPlaying);
+
+        // Trigger actual WebAudio engine
+        togglePlayback(volumes, muted, panning, userOffsets);
     };
 
     const stopAll = () => {
@@ -246,36 +228,21 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
         if (mrWavesurferRef.current) {
             try { mrWavesurferRef.current.pause(); mrWavesurferRef.current.setTime(0); } catch (e) { }
         }
-        setIsPlaying(false);
+        stopLivePlayback();
     };
 
     const handleVolumeChange = (trackId: string, vol: number) => {
         setVolumes(prev => ({ ...prev, [trackId]: vol }));
 
-        if (trackId === '__mr__') {
-            if (mrWavesurferRef.current) mrWavesurferRef.current.setVolume(muted[trackId] ? 0 : vol);
-            return;
-        }
-
+        // Mute WaveSurfers completely. The new WebAudio engine handles audio output.
+        if (trackId === '__mr__' && mrWavesurferRef.current) mrWavesurferRef.current.setVolume(0);
         const idx = tracks.findIndex(t => t.id === trackId);
-        if (wavesurferRefs.current[idx]) {
-            wavesurferRefs.current[idx]!.setVolume(muted[trackId] ? 0 : vol);
-        }
+        if (wavesurferRefs.current[idx]) wavesurferRefs.current[idx]!.setVolume(0);
     };
 
     const toggleMute = (trackId: string) => {
         const isMutedNow = !muted[trackId];
         setMuted(prev => ({ ...prev, [trackId]: isMutedNow }));
-
-        if (trackId === '__mr__') {
-            if (mrWavesurferRef.current) mrWavesurferRef.current.setVolume(isMutedNow ? 0 : (volumes[trackId] ?? 0.5));
-            return;
-        }
-
-        const idx = tracks.findIndex(t => t.id === trackId);
-        if (wavesurferRefs.current[idx]) {
-            wavesurferRefs.current[idx]!.setVolume(isMutedNow ? 0 : (volumes[trackId] ?? 1.0));
-        }
     };
 
     const toggleTrackPlay = (trackId: string, idx: number) => {
@@ -387,13 +354,13 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
                 {/* Primary Play */}
                 <button
                     onClick={togglePlay}
-                    disabled={!isAllReady}
-                    className={`w-full py-2 px-4 text-white text-[11px] sm:text-xs rounded-lg flex items-center justify-center gap-2 transition-all font-bold shadow-md h-10 ${isAllReady ? 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20' : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'}`}
+                    disabled={!isAllReady || !playbackReady}
+                    className={`w-full py-2 px-4 text-white text-[11px] sm:text-xs rounded-lg flex items-center justify-center gap-2 transition-all font-bold shadow-md h-10 ${(isAllReady && playbackReady) ? 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20' : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'}`}
                 >
-                    {!isAllReady ? (
+                    {(!isAllReady || !playbackReady) ? (
                         <>
                             <div className="w-3.5 h-3.5 border-2 border-slate-500 border-t-white rounded-full animate-spin" />
-                            <span className="tracking-wide">LOADING... ({currentReadyCount}/{expectedTracksCount})</span>
+                            <span className="tracking-wide">LOADING... (WebAudio Engine)</span>
                         </>
                     ) : isPlaying ? (
                         <>
@@ -431,7 +398,7 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
                     {mixdownUrl ? (
                         <a
                             href={mixdownUrl}
-                            download={`ChoirTuner_Mixdown_${new Date(timestamp).toLocaleString().replace(/[\/\s:]/g, '_')}.wav`}
+                            download={`ChoirMaster_Mixdown_${new Date(timestamp).toLocaleString().replace(/[\/\s:]/g, '_')}.wav`}
                             className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 h-10 px-2 sm:px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors border border-emerald-500/50 shadow-xl animate-pulse"
                             title="음원 병합 완료! 클릭하여 저장하세요"
                             onClick={(e) => e.stopPropagation()}
@@ -454,8 +421,8 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
                             ) : (
                                 <>
                                     <Layers size={13} className="text-teal-400" />
-                                    <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">MIXDOWN v1.9.12</span>
-                                    {/* Force Cache Break 1.9.12 */}
+                                    <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">MIXDOWN v2.0.0</span>
+                                    {/* Force Cache Break 2.0.0 */}
                                 </>
                             )}
                         </button>

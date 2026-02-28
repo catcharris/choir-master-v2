@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { encodeWav } from './wavEncoder';
+import toast from 'react-hot-toast';
 
 export function useVocalRecorder(
     streamRef: React.MutableRefObject<MediaStream | null>,
@@ -67,6 +68,15 @@ export function useVocalRecorder(
                     // TRUE T=0 NATIVE SYNC: Record the exact difference between the "scheduled start" and "actual arrival"
                     warmupOffsetRef.current = Math.max(0, audioCtx.currentTime - targetWebAudioTime);
                     console.log(`[SYNC] Hardware warmup captured: ${warmupOffsetRef.current.toFixed(4)}s`);
+
+                    // Severe Hardware Latency Warning (iOS Apple Music/Call Audio Session conflict detection)
+                    if (warmupOffsetRef.current > 0.15) {
+                        toast.error(
+                            "오디오 엔진 초기화가 매우 지연되었습니다. 백그라운드에 실행 중인 음악 앱(Apple Music 등)이나 통화를 완전히 종료하고 앱을 재실행해 주세요.",
+                            { duration: 6000 }
+                        );
+                    }
+
                     if (onStart) onStart(); // Trigger MR playback mechanically
                 }
                 const inputData = e.inputBuffer.getChannelData(0);

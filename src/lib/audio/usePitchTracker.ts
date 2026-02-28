@@ -79,7 +79,12 @@ export function usePitchTracker(
             streamRef.current = stream;
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+
+            // [CRITICAL FIX] Force 44.1kHz. If Apple Music is running in the background on iOS, 
+            // the hardware is locked to 44.1kHz. If we request the default (often 48kHz), 
+            // iOS stalls the init to spin up a hardware resampler, completely destroying our T=0 Sync assumptions.
+            const audioCtx = new AudioContextClass({ sampleRate: 44100 });
             audioContextRef.current = audioCtx;
 
             const analyser = audioCtx.createAnalyser();
