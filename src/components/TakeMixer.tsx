@@ -20,7 +20,6 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
     const [isDeleting, setIsDeleting] = useState(false);
     const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
     const [isMixerOpen, setIsMixerOpen] = useState(false);
-    const [mixdownUrl, setMixdownUrl] = useState<string | null>(null);
 
     const { isReady: playbackReady, isPlaying, togglePlayback, stopPlayback: stopLivePlayback, updateVolumes, updatePanning, updateReverb } = useMixerPlayback({
         tracks,
@@ -146,25 +145,13 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tracks]);
 
-    // Invalidate mixdown on changes
+    // Invalidate mixdown on changes (No longer needed for file, just pushes to live engine)
     useEffect(() => {
-        if (mixdownUrl) {
-            URL.revokeObjectURL(mixdownUrl);
-            setMixdownUrl(null);
-        }
-
         // Push realtime updates to the live audio engine
         updateVolumes(volumes, muted);
         updatePanning(panning);
 
-    }, [volumes, muted, panning, masterEq, reverbAmount, userOffsets, mrOffsetMs, mixdownUrl, updateVolumes, updatePanning]);
-
-    // Clean up object url on unmount
-    useEffect(() => {
-        return () => {
-            if (mixdownUrl) URL.revokeObjectURL(mixdownUrl);
-        };
-    }, [mixdownUrl]);
+    }, [volumes, muted, panning, masterEq, reverbAmount, userOffsets, mrOffsetMs, updateVolumes, updatePanning]);
 
     // Initialize MR WaveSurfer Separately
     useEffect(() => {
@@ -269,8 +256,20 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
             setIsMixing(true);
             const wavBlob = await mixdownTracks(tracks, volumes, muted, panning, masterEq, reverbAmount, mrUrl, userOffsets, mrOffsetMs);
             const url = URL.createObjectURL(wavBlob);
-            setMixdownUrl(url);
-            toast.success("✅ 믹스다운이 완료되었습니다! 다운로드 버튼을 눌러 저장하세요.");
+
+            // Auto download immediately
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `ChoirMaster_Mixdown_${new Date(timestamp).toLocaleString().replace(/[\/\s:]/g, '_')}.wav`;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+
+            toast.success("✅ 믹스다운이 완료되어 자동으로 다운로드되었습니다!");
         } catch (err: unknown) {
             console.error("Mixdown failed:", err);
             const msg = err instanceof Error ? err.message : "Unknown error";
@@ -406,38 +405,24 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
                         <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">MIXER</span>
                     </button>
 
-                    {mixdownUrl ? (
-                        <a
-                            href={mixdownUrl}
-                            download={`ChoirMaster_Mixdown_${new Date(timestamp).toLocaleString().replace(/[\/\s:]/g, '_')}.wav`}
-                            className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 h-10 px-2 sm:px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors border border-emerald-500/50 shadow-xl animate-pulse"
-                            title="음원 병합 완료! 클릭하여 저장하세요"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <Download size={13} />
-                            <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">SAVE WAV</span>
-                        </a>
-                    ) : (
-                        <button
-                            onClick={handleMixdown}
-                            disabled={isMixing}
-                            className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 h-10 px-2 sm:px-4 bg-slate-800 hover:bg-slate-700 text-teal-300 rounded-lg transition-colors border border-teal-500/30 shadow-sm disabled:opacity-50"
-                            title="보이는 믹스대로 음원 병합"
-                        >
-                            {isMixing ? (
-                                <>
-                                    <div className="w-3 h-3 border-2 border-teal-500/30 border-t-teal-400 rounded-full animate-spin" />
-                                    <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">MIXING</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Layers size={13} className="text-teal-400" />
-                                    <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">MIXDOWN v2.0.1</span>
-                                    {/* Force Cache Break 2.0.1 */}
-                                </>
-                            )}
-                        </button>
-                    )}
+                    <button
+                        onClick={handleMixdown}
+                        disabled={isMixing}
+                        className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 h-10 px-2 sm:px-4 bg-slate-800 hover:bg-slate-700 text-teal-300 rounded-lg transition-colors border border-teal-500/30 shadow-sm disabled:opacity-50"
+                        title="보이는 믹스대로 음원 병합"
+                    >
+                        {isMixing ? (
+                            <>
+                                <div className="w-3 h-3 border-2 border-teal-500/30 border-t-teal-400 rounded-full animate-spin" />
+                                <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">MIXING</span>
+                            </>
+                        ) : (
+                            <>
+                                <Layers size={13} className="text-teal-400" />
+                                <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">MIXDOWN v2.0.1</span>
+                            </>
+                        )}
+                    </button>
 
                 </div>
             </div>
