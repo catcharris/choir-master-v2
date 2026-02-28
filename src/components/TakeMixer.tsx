@@ -227,7 +227,7 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, on
         }
 
         // Trigger actual WebAudio engine
-        togglePlayback(volumes, muted, panning, userOffsets);
+        togglePlayback(volumes, muted, panning, reverbAmount, userOffsets);
     };
 
     const stopAll = () => {
