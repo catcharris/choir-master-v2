@@ -10,15 +10,17 @@ interface TakeMixerProps {
     tracks: PracticeTrack[];
     timestamp: number;
     mrUrl?: string | null; // Added to thread the backing track into playback/mixdown
+    mrOffsetMs?: number;   // The calculated offset between MR upload and this take's start time
     onDeleteComplete?: (deletedNames: string[]) => void;
 }
 
-export function TakeMixer({ roomId, tracks, timestamp, mrUrl, onDeleteComplete }: TakeMixerProps) {
+export function TakeMixer({ roomId, tracks, timestamp, mrUrl, mrOffsetMs = 0, onDeleteComplete }: TakeMixerProps) {
     const [isPlaying, setIsPlaying] = useState(false);
     const [isMixing, setIsMixing] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
     const [isMixerOpen, setIsMixerOpen] = useState(false);
+    const [mixdownUrl, setMixdownUrl] = useState<string | null>(null);
 
     // Global reverb state
     const [reverbAmount, setReverbAmount] = useState<number>(0);
@@ -26,6 +28,7 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, onDeleteComplete }
 
     const containerRefs = useRef<(HTMLDivElement | null)[]>([]);
     const wavesurferRefs = useRef<(WaveSurfer | null)[]>([]);
+    const sharedAudioCtxRef = useRef<AudioContext | null>(null);
 
     // MR Dedicated Refs
     const mrContainerRef = useRef<HTMLDivElement | null>(null);
@@ -84,6 +87,14 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, onDeleteComplete }
     useEffect(() => {
         const refs = wavesurferRefs.current;
 
+        // Force a stable 44100Hz context for all wavesurfer instances
+        // to prevent 48kHz WebM vocals and 44.1kHz MRs from playing back at different speeds.
+        if (!sharedAudioCtxRef.current) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            sharedAudioCtxRef.current = new AudioContextClass({ sampleRate: 44100 });
+        }
+
         tracks.forEach((track, i) => {
             if (!containerRefs.current[i]) return;
             // Prevent double initialization during strict mode
@@ -123,12 +134,33 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, onDeleteComplete }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tracks]);
 
+    // Invalidate mixdown on changes
+    useEffect(() => {
+        if (mixdownUrl) {
+            URL.revokeObjectURL(mixdownUrl);
+            setMixdownUrl(null);
+        }
+    }, [volumes, muted, panning, masterEq, reverbAmount, userOffsets, mrOffsetMs]);
+
+    // Clean up object url on unmount
+    useEffect(() => {
+        return () => {
+            if (mixdownUrl) URL.revokeObjectURL(mixdownUrl);
+        };
+    }, [mixdownUrl]);
+
     // Initialize MR WaveSurfer Separately
     useEffect(() => {
         if (!mrUrl || !mrContainerRef.current) return;
 
         if (mrWavesurferRef.current) {
             mrWavesurferRef.current.destroy();
+        }
+
+        if (!sharedAudioCtxRef.current) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            sharedAudioCtxRef.current = new AudioContextClass({ sampleRate: 44100 });
         }
 
         const ws = WaveSurfer.create({
@@ -165,10 +197,13 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, onDeleteComplete }
             wavesurferRefs.current.forEach(ws => ws?.pause());
             mrWavesurferRef.current?.pause();
         } else {
-            // MR serves as absolute Timeline T=0
+            // MR is positioned based on its temporally calculated offset relative to the choir recording
             if (mrWavesurferRef.current) {
-                mrWavesurferRef.current.setTime(0);
-                mrWavesurferRef.current.play();
+                // In iOS Safari, we must ensure it's not trying to seek while uninitialized
+                try {
+                    mrWavesurferRef.current.setTime(mrOffsetMs / 1000);
+                    mrWavesurferRef.current.play();
+                } catch (e) { console.error("mrWavesurfer play error", e); }
             }
 
             // Each satellite captures audio at a slightly different offset
@@ -201,9 +236,13 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, onDeleteComplete }
 
     const stopAll = () => {
         wavesurferRefs.current.forEach(ws => {
-            if (ws) ws.stop();
+            if (ws) {
+                try { ws.pause(); ws.setTime(0); } catch (e) { }
+            }
         });
-        mrWavesurferRef.current?.stop();
+        if (mrWavesurferRef.current) {
+            try { mrWavesurferRef.current.pause(); mrWavesurferRef.current.setTime(0); } catch (e) { }
+        }
         setIsPlaying(false);
     };
 
@@ -243,20 +282,14 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, onDeleteComplete }
         }
     };
 
-    const handleMixdown = async () => {
+    const handleMixdown = async (e: React.MouseEvent) => {
+        e.stopPropagation();
         try {
             setIsMixing(true);
-            const wavBlob = await mixdownTracks(tracks, volumes, muted, panning, masterEq, reverbAmount, mrUrl, userOffsets);
+            const wavBlob = await mixdownTracks(tracks, volumes, muted, panning, masterEq, reverbAmount, mrUrl, userOffsets, mrOffsetMs);
             const url = URL.createObjectURL(wavBlob);
-
-            const a = document.createElement('a');
-            a.href = url;
-            const takeDate = new Date(timestamp).toLocaleString().replace(/[\/\s:]/g, '_');
-            a.download = `ChoirTuner_Mixdown_${takeDate}.wav`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            setMixdownUrl(url);
+            toast.success("✅ 믹스다운이 완료되었습니다! 다운로드 버튼을 눌러 저장하세요.");
         } catch (err: unknown) {
             console.error("Mixdown failed:", err);
             const msg = err instanceof Error ? err.message : "Unknown error";
@@ -392,24 +425,37 @@ export function TakeMixer({ roomId, tracks, timestamp, mrUrl, onDeleteComplete }
                         <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">MIXER</span>
                     </button>
 
-                    <button
-                        onClick={handleMixdown}
-                        disabled={isMixing}
-                        className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 h-10 px-2 sm:px-4 bg-slate-800 hover:bg-slate-700 text-teal-300 rounded-lg transition-colors border border-teal-500/30 shadow-sm disabled:opacity-50"
-                        title="보이는 믹스대로 음원 병합"
-                    >
-                        {isMixing ? (
-                            <>
-                                <div className="w-3 h-3 border-2 border-teal-500/30 border-t-teal-400 rounded-full animate-spin" />
-                                <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">MIXING</span>
-                            </>
-                        ) : (
-                            <>
-                                <Layers size={13} className="text-teal-400" />
-                                <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">MIXDOWN</span>
-                            </>
-                        )}
-                    </button>
+                    {mixdownUrl ? (
+                        <a
+                            href={mixdownUrl}
+                            download={`ChoirTuner_Mixdown_${new Date(timestamp).toLocaleString().replace(/[\/\s:]/g, '_')}.wav`}
+                            className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 h-10 px-2 sm:px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors border border-emerald-500/50 shadow-xl animate-pulse"
+                            title="음원 병합 완료! 클릭하여 저장하세요"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <Download size={13} />
+                            <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">SAVE WAV</span>
+                        </a>
+                    ) : (
+                        <button
+                            onClick={handleMixdown}
+                            disabled={isMixing}
+                            className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 h-10 px-2 sm:px-4 bg-slate-800 hover:bg-slate-700 text-teal-300 rounded-lg transition-colors border border-teal-500/30 shadow-sm disabled:opacity-50"
+                            title="보이는 믹스대로 음원 병합"
+                        >
+                            {isMixing ? (
+                                <>
+                                    <div className="w-3 h-3 border-2 border-teal-500/30 border-t-teal-400 rounded-full animate-spin" />
+                                    <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">MIXING</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Layers size={13} className="text-teal-400" />
+                                    <span className="font-bold tracking-wider text-[9px] sm:text-[10px]">MIXDOWN v1.9.2</span>
+                                </>
+                            )}
+                        </button>
+                    )}
                 </div>
             </div>
 

@@ -6,6 +6,8 @@ function writeString(view: DataView, offset: number, string: string) {
     }
 }
 
+// Wrapper removed as it breaks modern Safari sample-rate detection
+
 function encodeWAV(samples: Float32Array, sampleRate: number, numChannels: number = 2): Blob {
     const buffer = new ArrayBuffer(44 + samples.length * 2);
     const view = new DataView(buffer);
@@ -84,32 +86,43 @@ export async function mixdownTracks(
     masterEq: { low: number, mid: number, high: number },
     reverbAmount: number = 0, // 0.0 to 1.0 (Wet/Dry mix)
     mrUrl?: string | null,    // Optional backing track to layer in
-    userOffsetsMs: Record<string, number> = {} // Custom user tweaks
+    userOffsetsMs: Record<string, number> = {}, // Custom user tweaks
+    mrOffsetMs: number = 0    // Temporal offset from MR upload to Take start
 ): Promise<Blob> {
+    // 1. Force the decoding context to 44100Hz so ALL buffers (Opus from WebM (48k) and MRs (44.1k))
+    // are resampled to a common denominator natively by the browser. This prevents the "stretched out"
+    // slow-motion audio bug when mixing mismatched sample rate tracks.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const audioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+    const audioCtx = new audioCtxClass({ sampleRate: 44100 });
 
     // 1. Fetch and decode all audio
     const buffers: { buffer: AudioBuffer, trackId: string, offsetSec: number }[] = [];
 
-    // Calculate the global shift needed if any track has a negative user offset (meaning it needs to start "earlier")
-    // If a track wants to start at -100ms, we can't rewind time. So we instead push EVERYTHING ELSE forward by +100ms.
-    const minUserOffset = Math.min(0, ...Object.values(userOffsetsMs));
-    const globalShiftMs = Math.abs(minUserOffset);
-    const globalShiftSec = globalShiftMs / 1000;
-
     // 1(a). Fetch MR if provided
     if (mrUrl) {
         try {
-            const response = await fetch(mrUrl);
-            if (response.ok) {
-                const arrayBuffer = await response.arrayBuffer();
-                const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-                buffers.push({ buffer: audioBuffer, trackId: '__mr__', offsetSec: globalShiftSec });
+            console.log("Fetching MR track for mixdown:", mrUrl);
+            const response = await fetch(mrUrl, { mode: 'cors' });
+            if (!response.ok) {
+                throw new Error(`MR HTTP Error: ${response.status} ${response.statusText}`);
             }
+            const arrayBuffer = await response.arrayBuffer();
+            console.log("MR fetched, decoding audio... bytes:", arrayBuffer.byteLength);
+
+            const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+            console.log("MR decoded successfully!", audioBuffer.duration);
+            // Default MR offset needs to be explicitly pushed forward by the hardcoded REC delay 
+            // so it aligns with satellites that started recording exactly at that delayed moment
+            const baseMrOffsetSec = START_RECORD_DELAY_SEC + (mrOffsetMs / 1000);
+            const userMrOffsetSec = (userOffsetsMs['__mr__'] || 0) / 1000;
+            const finalMrOffsetSec = baseMrOffsetSec + userMrOffsetSec;
+            buffers.push({ buffer: audioBuffer, trackId: '__mr__', offsetSec: Math.max(0, finalMrOffsetSec) });
         } catch (err) {
-            console.error("Failed to include MR in mixdown:", err);
-            // Non-fatal, we just continue with vocals
+            console.error("CRITICAL: Failed to include MR in mixdown:", err);
+            // We throw here now so the user actually sees an error toast if MR completely fails
+            throw new Error(`MR 오디오 트랙을 처리하는 데 실패했습니다. (${err instanceof Error ? err.message : 'Unknown'})`);
         }
     }
 
@@ -120,13 +133,12 @@ export async function mixdownTracks(
         if (!response.ok) throw new Error(`Failed to fetch track: ${response.statusText}`);
         const arrayBuffer = await response.arrayBuffer();
 
-        // Decode the Opus/WebM/MP4 data into raw PCM AudioBuffer
         const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
         const baseOffsetMs = track.offsetMs || 0;
         const userOffsetMs = userOffsetsMs[track.id] || 0;
 
-        // Final offset = Hardware Latency + User Custom Tweak + Global Negative Shift Padding
-        const finalOffsetSec = (baseOffsetMs + userOffsetMs + globalShiftMs) / 1000;
+        // Final offset = Hardware Latency + User Custom Tweak
+        const finalOffsetSec = (baseOffsetMs + userOffsetMs) / 1000;
 
         buffers.push({ buffer: audioBuffer, trackId: track.id, offsetSec: finalOffsetSec });
     }
