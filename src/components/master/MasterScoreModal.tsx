@@ -135,18 +135,25 @@ export function MasterScoreModal({
                         setLyrics(data.lyrics);
                     }
                 } else {
-                    toast.error(`${i + 1}번째 페이지 추출 실패`);
+                    toast.error(`${i + 1}번째 페이지 추출 실패: ${data.error || 'Unknown Error'}`);
                 }
-            } catch (error) {
+            } catch (error: any) {
                 console.error(error);
-                toast.error(`${i + 1}번째 페이지 AI 연결 오류`);
+                toast.error(`${i + 1}번째 페이지 AI 연결 오류: ${error.message || 'Unknown Error'}`);
             }
             setExtractProgress((prev) => prev + 1);
         }
 
         // Now broadcast the complete array to satellites and update master state
         onUpdateAllLyrics(newAllLyrics);
-        toast.success('전곡 가사 자동 추출이 완료되었습니다!');
+
+        const successCount = newAllLyrics.filter((l, idx) => l.trim() !== '' && allLyrics[idx]?.trim() === '').length;
+        if (successCount > 0) {
+            toast.success(`전곡 가사 추출이 완료되었습니다! (${successCount}장 성공)`);
+        } else {
+            toast.error('모든 페이지의 가사 추출에 실패했습니다.');
+        }
+
         setIsExtractingAll(false);
     };
 
