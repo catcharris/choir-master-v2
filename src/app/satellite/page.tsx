@@ -5,7 +5,7 @@ import { useSatelliteStreamer } from '@/lib/useSatelliteStreamer';
 import { PitchData } from '@/lib/pitch';
 import { RecordingProfile } from '@/lib/audio/usePitchTracker';
 import { uploadAudioBlob } from '@/lib/uploadAudio';
-import { RadioReceiver, AlertCircle, Mic, Video, ArrowDownUp } from 'lucide-react';
+import { RadioReceiver, AlertCircle, Mic, Video } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useMaestroCamSatellite } from '@/lib/webrtc/useMaestroCamSatellite';
 import { fetchLatestBackingTrack } from '@/lib/backingTrackUtils';
@@ -27,9 +27,6 @@ export default function SatellitePage() {
     const [mrUrl, setMrUrl] = useState<string | null>(null);
     const [isMrReady, setIsMrReady] = useState(false);
     const [mrError, setMrError] = useState<string | null>(null);
-
-    // Screen Flip State for Upside-Down Charging Stands
-    const [isFlipped, setIsFlipped] = useState(false);
 
     // Score states
     const [scoreUrls, setScoreUrls] = useState<string[]>([]);
@@ -312,7 +309,7 @@ export default function SatellitePage() {
     }
 
     return (
-        <main className={`no-swipe-back h-[100dvh] w-full fixed inset-0 overflow-y-auto overflow-x-hidden bg-slate-950 text-slate-100 flex flex-col items-center p-4 sm:p-8 transition-transform duration-700 ease-in-out ${isFlipped ? 'rotate-180' : ''}`}>
+        <main className="no-swipe-back h-[100dvh] w-full fixed inset-0 overflow-hidden bg-slate-950 text-slate-100 flex flex-col items-center p-4 sm:p-8">
             {/* Cinematic Background Glows */}
             <div className="absolute top-0 right-0 w-[120vw] max-w-xl h-80 bg-emerald-600/10 blur-[100px] rounded-[100%] pointer-events-none -translate-y-1/2 translate-x-1/4" />
             <div className="absolute bottom-0 left-0 w-[120vw] max-w-xl h-80 bg-indigo-600/15 blur-[100px] rounded-[100%] pointer-events-none translate-y-1/2 -translate-x-1/4" />
@@ -337,15 +334,6 @@ export default function SatellitePage() {
                     </div>
 
                     <div className="text-center mt-4 flex-1 flex flex-col justify-end relative w-full">
-                        {/* Flip Screen Button positioned top-right or absolute */}
-                        <button
-                            onClick={() => setIsFlipped(!isFlipped)}
-                            className="absolute right-0 top-0 sm:-right-4 px-3 py-1.5 rounded-xl bg-slate-800/50 hover:bg-slate-700 text-slate-400 font-bold text-xs flex items-center gap-1.5 transition-all shadow-lg border border-white/5 active:scale-95 z-50"
-                        >
-                            <ArrowDownUp size={14} />
-                            <span>상하 반전</span>
-                        </button>
-
                         <div className="flex items-center justify-center gap-2 mb-1">
                             <span className="px-2 py-0.5 rounded text-[10px] font-black tracking-widest bg-slate-800 text-slate-400 uppercase">Room</span>
                             <span className="text-sm font-bold text-slate-300">{roomId}</span>
