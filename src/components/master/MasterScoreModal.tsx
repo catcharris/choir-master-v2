@@ -428,6 +428,13 @@ export function MasterScoreModal({
                                                 <textarea
                                                     value={lyrics}
                                                     onChange={(e) => setLyrics(e.target.value)}
+                                                    onBlur={() => {
+                                                        if (allLyrics[currentIndex] !== lyrics) {
+                                                            const newAllLyrics = [...allLyrics];
+                                                            newAllLyrics[currentIndex] = lyrics;
+                                                            onUpdateAllLyrics(newAllLyrics);
+                                                        }
+                                                    }}
                                                     placeholder={`AI가 추출한 가사가 이곳에 표시됩니다.\n추출 버튼을 눌러보세요.\n\n(현재 페이지: ${currentIndex + 1})`}
                                                     className="w-full h-full bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-5 sm:p-6 text-base sm:text-lg tracking-wide leading-relaxed font-bold focus:outline-none focus:border-indigo-400/50 focus:ring-1 focus:ring-indigo-400/50 focus:bg-black/40 transition-all resize-none placeholder:text-white/20 text-white/90 shadow-inner custom-scrollbar"
                                                 />
