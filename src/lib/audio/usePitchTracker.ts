@@ -227,20 +227,20 @@ export function usePitchTracker(
                     audioContextRef.current.resume().catch(e => console.error("Failed to resume AudioContext", e));
                 }
 
-                // 2. Check if the MediaStream (Mic) track was killed by the OS
-                if (streamRef.current && modeRef.current !== 'idle') {
-                    const tracks = streamRef.current.getTracks();
-                    const isDead = tracks.some(t => t.readyState === 'ended');
-                    if (isDead) {
-                        console.log("Microphone track died while in background. Restarting...");
-                        const previousMode = modeRef.current;
-                        stopListening(); // Clean up dead tracks
+                // 2. Unconditionally restart the microphone on iOS Safari.
+                // iOS deeply suspends the hardware buffer when backgrounded but often leaves
+                // `readyState === 'live'`, causing silent failures. We must force-reboot it.
+                if (modeRef.current !== 'idle') {
+                    console.log("App foregrounded. Force-restarting microphone hardware to clear Apple/Safari suspension locks...");
+                    const previousMode = modeRef.current;
 
-                        // Briefly wait for OS to release the hardware lock, then restart
-                        setTimeout(() => {
-                            startListening(previousMode as 'vocal' | 'piano').catch(console.error);
-                        }, 250);
-                    }
+                    // Stop all existing audio tracks and close the dead context
+                    stopListening();
+
+                    // Briefly wait for OS to fully release the hardware lock, then restart
+                    setTimeout(() => {
+                        startListening(previousMode as 'vocal' | 'piano').catch(console.error);
+                    }, 400); // Increased delay slightly to give iOS audio daemon time to breathe
                 }
             }
         };
