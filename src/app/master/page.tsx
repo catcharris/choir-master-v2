@@ -99,8 +99,10 @@ export default function MasterPage() {
     const [scoreUrls, setScoreUrls] = useState<string[]>([]);
     const [isScoreModalOpen, setIsScoreModalOpen] = useState(false);
 
-    // Phase 16: AI Lyrics Sync (V2 - Array for all pages)
     const [allLyrics, setAllLyrics] = useState<string[]>([]);
+
+    // Hardware Audio Sample Rate Display
+    const [sampleRate, setSampleRate] = useState<number | undefined>(undefined);
 
     // Mute MR Toggle
     const [isMrMuted, setIsMrMuted] = useState(false);
@@ -239,6 +241,7 @@ export default function MasterPage() {
             }
 
             audioContextRef.current = audioCtx;
+            setSampleRate(audioCtx.sampleRate);
         }
 
         connect();
@@ -536,7 +539,7 @@ export default function MasterPage() {
                 isStudioMode={isStudioMode}
                 onToggleStudioMode={handleToggleStudioMode}
                 activeChord={activeChord}
-                sampleRate={audioContextRef.current?.sampleRate}
+                sampleRate={sampleRate}
             />
 
             {/* Manager Console overlay (only visible in Manager tab) */}
