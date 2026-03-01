@@ -1,7 +1,8 @@
-import React from 'react';
-import { FolderOpen, X } from 'lucide-react';
-import { PracticeTrack } from '@/lib/storageUtils';
+import React, { useState } from 'react';
+import { FolderOpen, X, Trash2 } from 'lucide-react';
+import { PracticeTrack, deleteAllVocalTracks } from '@/lib/storageUtils';
 import { TakeMixer } from '@/components/TakeMixer';
+import toast from 'react-hot-toast';
 
 interface RecordingsDrawerProps {
     roomId: string;
@@ -24,6 +25,9 @@ export function RecordingsDrawer({
     isLoadingTracks,
     onLoadTracks
 }: RecordingsDrawerProps) {
+    const [isDeletingAll, setIsDeletingAll] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(false);
+
     const groupedTakes = React.useMemo(() => {
         const takes: { timestamp: number, tracks: PracticeTrack[] }[] = [];
         tracks.forEach(t => {
@@ -61,15 +65,58 @@ export function RecordingsDrawer({
                     </button>
                 </div>
 
-                <div className="p-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
+                <div className="p-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center gap-2">
                     <span className="text-sm text-slate-400">Room: {roomId}</span>
-                    <button
-                        onClick={() => onLoadTracks()}
-                        disabled={isLoadingTracks}
-                        className="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg font-medium transition-colors"
-                    >
-                        {isLoadingTracks ? '불러오는 중...' : '새로고침'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {tracks.length > 0 && (
+                            confirmDelete ? (
+                                <div className="flex items-center gap-1.5 animate-in slide-in-from-right-2">
+                                    <button
+                                        onClick={async () => {
+                                            setIsDeletingAll(true);
+                                            const success = await deleteAllVocalTracks(roomId);
+                                            setIsDeletingAll(false);
+                                            setConfirmDelete(false);
+                                            if (success) {
+                                                toast.success("모든 녹음 파일이 삭제되었습니다.");
+                                                onLoadTracks();
+                                            } else {
+                                                toast.error("일괄 삭제 중 오류가 발생했습니다.");
+                                            }
+                                        }}
+                                        disabled={isDeletingAll}
+                                        className="text-xs bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg font-bold transition-colors disabled:opacity-50 flex items-center gap-1 shadow-lg shadow-red-500/20"
+                                    >
+                                        {isDeletingAll ? '삭제중...' : '진짜 삭제'}
+                                    </button>
+                                    <button
+                                        onClick={() => setConfirmDelete(false)}
+                                        disabled={isDeletingAll}
+                                        className="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg font-medium transition-colors"
+                                    >
+                                        취소
+                                    </button>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={() => setConfirmDelete(true)}
+                                    disabled={isLoadingTracks || isDeletingAll}
+                                    className="text-xs text-red-400 hover:text-white border border-red-500/30 hover:bg-red-500/20 px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5"
+                                    title="이 방의 모든 단원 녹음 파일을 영구 삭제합니다."
+                                >
+                                    <Trash2 size={12} />
+                                    전체 일괄 삭제
+                                </button>
+                            )
+                        )}
+                        <button
+                            onClick={() => onLoadTracks()}
+                            disabled={isLoadingTracks || isDeletingAll}
+                            className="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg font-medium transition-colors"
+                        >
+                            {isLoadingTracks ? '새로고침 중...' : '새로고침'}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-3">

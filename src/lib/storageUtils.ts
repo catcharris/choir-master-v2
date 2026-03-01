@@ -15,6 +15,42 @@ export interface PracticeTrack {
 }
 
 /**
+ * Permanently deletes all vocal tracks (practice_tracks) for a specific room.
+ * This is a nuclear option for users experiencing persistent ghost files.
+ */
+export async function deleteAllVocalTracks(roomId: string): Promise<boolean> {
+    if (!roomId) return false;
+
+    try {
+        const b64EncodeUnicode = (str: string) => btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode(parseInt(p1, 16))));
+        const safeRoomId = b64EncodeUnicode(roomId.trim()).replace(/\+/g, '-',).replace(/\//g, '_').replace(/=/g, '');
+
+        const { data: existingFiles, error: listError } = await supabase.storage
+            .from('practice_tracks')
+            .list(safeRoomId, { limit: 1000 });
+
+        if (listError || !existingFiles || existingFiles.length === 0) return true;
+
+        const validFiles = existingFiles.filter(f => f.name !== '.emptyFolderPlaceholder');
+        if (validFiles.length === 0) return true;
+
+        const pathsToDelete = validFiles.map(f => `${safeRoomId}/${f.name}`);
+        const { error: removeError } = await supabase.storage
+            .from('practice_tracks')
+            .remove(pathsToDelete);
+
+        if (removeError) {
+            console.error("Bulk delete failed:", removeError);
+            return false;
+        }
+        return true;
+    } catch (e) {
+        console.error("Unexpected error in bulk delete:", e);
+        return false;
+    }
+}
+
+/**
  * Fetches all available practice tracks for a specific Room ID from the Supabase bucket.
  * The paths in the bucket are formatted as: {roomId}/{partName}_{timestamp}.webm
  */
