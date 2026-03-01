@@ -99,12 +99,14 @@ export default function SatellitePage() {
                 setSyncCountdownTarget(payload.targetTime);
 
                 // Start hardware WebAudio engine immediately, telling it to wait for exactly `remainingSeconds`
-                startRecording(() => {
-                    if (isMrReady) {
-                        // Pass 0 delay here, because startRecording already waited the exact time!
-                        playBackingTrack();
-                    }
-                }, remainingSeconds);
+                startRecording(undefined, remainingSeconds);
+
+                // Phase 17/18: V2.0 Sample-Accurate Sync
+                // We MUST mathematically schedule MR playback independently of the microphone hardware wakeup.
+                // This guarantees 0ms Acoustic Room Jitter between Master and Satellites.
+                if (isMrReady) {
+                    playBackingTrack(1, remainingSeconds);
+                }
             }
         } else if (action === 'STOP_RECORD') {
             if (isSoloRecording) return; // Don't stop if user is recording manually

@@ -57,31 +57,54 @@ export function useVocalRecorder(
             warmupOffsetRef.current = 0;
 
             processor.onaudioprocess = (e) => {
-                // Phase 17: Scheduled Sync Playback
-                // Drop frames until we perfectly match the master's scheduled server time.
+                // Phase 17/18: V2.0 Sample-Accurate T=0 Native Sync
+                // The buffer size is 4096. At 48kHz, this chunk represents ~85.3ms of audio.
+                // We must precisely splice the very first chunk so the resulting array begins
+                // at the EXACT nanosecond of `targetWebAudioTime`.
+                const inputData = e.inputBuffer.getChannelData(0);
+
                 if (audioCtx.currentTime < targetWebAudioTime) {
+                    // This entire chunk happened before our target start time. Drop it.
                     return;
                 }
 
                 if (isFirstFrame) {
                     isFirstFrame = false;
-                    // TRUE T=0 NATIVE SYNC: Record the exact difference between the "scheduled start" and "actual arrival"
-                    warmupOffsetRef.current = Math.max(0, audioCtx.currentTime - targetWebAudioTime);
-                    console.log(`[SYNC] Hardware warmup captured: ${warmupOffsetRef.current.toFixed(4)}s`);
 
-                    // Severe Hardware Latency Warning (iOS Apple Music/Call Audio Session conflict detection)
-                    if (warmupOffsetRef.current > 0.15) {
+                    // The currentTime points to the END of the audio chunk that just finished processing.
+                    const exactChunkDuration = inputData.length / audioCtx.sampleRate;
+                    const chunkStartTime = audioCtx.currentTime - exactChunkDuration;
+
+                    // If the chunk started before our target time, it contains some garbage audio we need to trim.
+                    if (chunkStartTime < targetWebAudioTime) {
+                        const discardSeconds = targetWebAudioTime - chunkStartTime;
+                        const discardSamples = Math.floor(discardSeconds * audioCtx.sampleRate);
+
+                        console.log(`[SYNC T=0] Cutting ${discardSamples} samples (${(discardSeconds * 1000).toFixed(2)}ms) from initial hardware buffer to achieve sample-accurate T=0 alignment.`);
+
+                        if (discardSamples < inputData.length) {
+                            const trimmedData = inputData.slice(discardSamples);
+                            pcmDataRef.current.push(new Float32Array(trimmedData));
+                        }
+                    } else {
+                        // Rare case: The chunk started EXACTLY at or after the target time.
+                        pcmDataRef.current.push(new Float32Array(inputData));
+                    }
+
+                    // Hardware Latency Detection (Checking how late this chunk actually arrived vs when it was scheduled)
+                    const hardwareDelay = audioCtx.currentTime - targetWebAudioTime;
+                    if (hardwareDelay > 0.25) {
                         toast.error(
-                            "오디오 엔진 초기화가 매우 지연되었습니다. 백그라운드에 실행 중인 음악 앱(Apple Music 등)이나 통화를 완전히 종료하고 앱을 재실행해 주세요.",
+                            "오디오 엔진 초기화가 매우 지연되었습니다. 백그라운드 앱을 종료해 주세요.",
                             { duration: 6000 }
                         );
                     }
 
-                    if (onStart) onStart(); // Trigger MR playback mechanically
+                    if (onStart) onStart();
+                } else {
+                    // Subsequent chunks are kept 100%
+                    pcmDataRef.current.push(new Float32Array(inputData));
                 }
-                const inputData = e.inputBuffer.getChannelData(0);
-                // Copy data because the buffer is reused
-                pcmDataRef.current.push(new Float32Array(inputData));
             };
 
             // Connect to start processing (must connect destination for some browsers to trigger inaudioprocess)
