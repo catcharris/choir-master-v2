@@ -99,12 +99,13 @@ export default function SatellitePage() {
                 setSyncCountdownTarget(payload.targetTime);
 
                 // Start hardware WebAudio engine immediately, telling it to wait for exactly `remainingSeconds`
-                startRecording(() => {
-                    if (isMrReady) {
-                        // Pass 0 delay here, because startRecording already waited the exact time!
-                        playBackingTrack();
-                    }
-                }, remainingSeconds);
+                startRecording(undefined, remainingSeconds);
+
+                // Fix: Do NOT wait for startRecording's `onStart` callback (which is delayed by hardware wakeup).
+                // Instead, schedule the Backing Track immediately based on the same atomic timer as the Master.
+                if (isMrReady) {
+                    playBackingTrack(1, remainingSeconds);
+                }
             }
         } else if (action === 'STOP_RECORD') {
             if (isSoloRecording) return; // Don't stop if user is recording manually
@@ -117,13 +118,13 @@ export default function SatellitePage() {
             let attempts = 0;
             const checkBlobAndUpload = setInterval(async () => {
                 attempts++;
-                const blob = getRecordedBlob();
-                if (blob) {
+                const payload = getRecordedBlob();
+                if (payload && payload.blob) {
                     clearInterval(checkBlobAndUpload);
                     clearRecordedBlob(); // Prevents multiple upload triggers from queued intervals
 
-                    console.log("Blob ready! Uploading to Supabase...");
-                    const path = await uploadAudioBlob(blob, roomId, partName, 0);
+                    console.log("Blob ready! Uploading to Supabase with hardware offset:", payload.offsetMs);
+                    const path = await uploadAudioBlob(payload.blob, roomId, partName, payload.offsetMs);
                     if (path) {
                         console.log("Upload successful:", path);
                         toast.success("마스터 녹음이 파일 서버로 전송되었습니다.", { duration: 4000 });

@@ -232,12 +232,12 @@ export async function mixdownTracks(
         trackGain.connect(trackPan);
         trackPan.connect(masterOut);
 
-        // Each hardware device starts capturing at a different absolute time.
-        // We delay each individual track inside the mixdown by its precise telemetry `offsetMs`
-        // so it perfectly aligns against the MR which acts as absolute Timeline 0.0.
-        // If the offset is negative, we start immediately (0) and skip the first N seconds of the buffer.
+        // Each hardware device starts capturing at a different absolute time (T=0 + warmupOffset).
+        // A track with offsetMs = 150 means the microphone physically turned on 150ms AFTER the MR started.
+        // Therefore, we must delay the start of this vocal track in the final mix by 150ms.
+        // We set startWhen = b.offsetSec (e.g. 0.150s), and bufferOffset = 0 (play from the beginning of the blob).
         const startWhen = Math.max(0, b.offsetSec);
-        const bufferOffset = Math.max(0, -b.offsetSec);
+        const bufferOffset = 0; // We now provide the pure, untrimmed blob, so we must play from 0.0s.
         source.start(startWhen, bufferOffset);
     }
 

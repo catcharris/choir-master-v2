@@ -93,7 +93,7 @@ export function useVocalRecorder(
             console.error("Failed to start WebAudio Recorder:", err);
             setRecordError(`녹음 시작 실패: ${err.message || "지원되지 않는 환경입니다."}`);
         }
-    }, [streamRef, isStudioMode]);
+    }, [streamRef, isStudioMode, globalAudioContextRef]);
 
     const stopRecording = useCallback(() => {
         if (scriptProcessorRef.current && mediaStreamSourceRef.current && globalAudioContextRef.current) {
@@ -111,15 +111,11 @@ export function useVocalRecorder(
 
             const sampleRate = globalAudioContextRef.current.sampleRate;
 
-            // Apply the T=0 Native Sync warmup offset by shifting the PCM data array
-            // We trim off the silence/delay at the beginning of the buffer exactly matching the hardware wakeup gap
-            const trimSamples = Math.floor(warmupOffsetRef.current * sampleRate);
+            // Do not trim the hardware warmup gap from the Blob! 
+            // The blob's physical 0.0s time is technically `targetWebAudioTime + warmupOffsetRef`.
+            // By NOT trimming it, we ensure the master mixdown can accurately shift this entire blob 
+            // by the precise `warmupOffsetRef` amount relative to the pristine T=0 MR timeline.
             let finalPcmData = flatData;
-
-            if (trimSamples > 0 && trimSamples < flatData.length) {
-                console.log(`[SYNC] Trimming ${trimSamples} hardware latency warmup samples from beginning of blob.`);
-                finalPcmData = flatData.slice(trimSamples);
-            }
 
             // encodeWav outputs standard 16-bit PCM WAV which is universally supported
             const wavBlob = encodeWav(finalPcmData, sampleRate, 1);
@@ -136,7 +132,7 @@ export function useVocalRecorder(
     }, [isStudioMode, globalAudioContextRef]);
 
     const getRecordedBlob = useCallback(() => {
-        return finalBlobRef.current;
+        return { blob: finalBlobRef.current, offsetMs: Math.round(warmupOffsetRef.current * 1000) };
     }, []);
 
     const clearRecordedBlob = useCallback(() => {

@@ -477,15 +477,13 @@ export default function MasterPage() {
             const remainingMs = targetTime - exactCurrentServerTime;
             const remainingSeconds = Math.max(0, remainingMs / 1000);
 
-            // Phase 17.5: Master Synthetic Delay Compensation
-            // Satellites trigger their MR playback inside the `onaudioprocess` loop (using a 4096 buffer),
-            // which introduces an inherent physical hardware delay of ~90ms to ~150ms after `targetTime`.
-            // Because the Master has no active microphone (it's in playback-only mode), it fires audio perfectly on time,
-            // resulting in it playing *before* the satellites. We apply a 130ms synthetic delay to perfectly align them.
-            const MASTER_HARDWARE_COMPENSATION = 0.130;
+            // Phase 17.5: Master Synthetic Delay Compensation Removed
+            // Satellites now trigger their MR playback immediately via the WebAudio chronological timer,
+            // identical to how the Master schedules it. They no longer wait for the `onaudioprocess` loop
+            // to fetch the first microphone bytes. Both devices now play the MR perfectly in sync in real-time.
 
             if (mrUrl) {
-                playBackingTrack(isMrMutedRef.current ? 0 : 1, remainingSeconds + MASTER_HARDWARE_COMPENSATION);
+                playBackingTrack(isMrMutedRef.current ? 0 : 1, remainingSeconds);
             }
         }
     };
