@@ -536,6 +536,7 @@ export default function MasterPage() {
                 isStudioMode={isStudioMode}
                 onToggleStudioMode={handleToggleStudioMode}
                 activeChord={activeChord}
+                sampleRate={audioContextRef.current?.sampleRate}
             />
 
             {/* Manager Console overlay (only visible in Manager tab) */}

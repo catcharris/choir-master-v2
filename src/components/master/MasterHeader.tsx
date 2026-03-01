@@ -24,6 +24,7 @@ interface MasterHeaderProps {
     isStudioMode: boolean;
     onToggleStudioMode: () => void;
     activeChord: DetectedChord | null;
+    sampleRate?: number;
 }
 
 export function MasterHeader({
@@ -46,7 +47,8 @@ export function MasterHeader({
     onSwitchMode,
     isStudioMode,
     onToggleStudioMode,
-    activeChord
+    activeChord,
+    sampleRate
 }: MasterHeaderProps) {
     return (
         <header className="px-4 sm:px-6 py-3 sm:py-4 flex flex-col md:flex-row md:flex-nowrap items-center justify-between gap-3 sm:gap-4 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-10 transition-colors duration-500 w-full overflow-hidden">
@@ -78,6 +80,11 @@ export function MasterHeader({
                     <div className={`items-center gap-2 font-bold px-3 py-1.5 rounded-lg transition-colors duration-500 hidden xl:flex shrink-0 ${isRecordingMaster ? 'bg-red-500/20 text-red-500' : 'bg-indigo-500/10 text-indigo-400'}`}>
                         <SignalHigh size={18} className={isRecordingMaster ? "animate-pulse" : ""} />
                         ROOM {roomId} {isRecordingMaster && "• REC"}
+                        {sampleRate && (
+                            <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold tracking-widest bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                {Math.round(sampleRate / 1000)}kHz
+                            </span>
+                        )}
                     </div>
                     <div className="hidden sm:flex items-center gap-1.5 text-slate-400 text-sm font-medium whitespace-nowrap shrink-0">
                         <Users size={16} className="shrink-0" />

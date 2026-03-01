@@ -52,7 +52,8 @@ export default function SatellitePage() {
     const {
         listenMode, startListening, stopListening, pitch, error,
         isRecording, startRecording, stopRecording, getRecordedBlob, clearRecordedBlob,
-        preloadBackingTrack, playBackingTrack, stopBackingTrack
+        preloadBackingTrack, playBackingTrack, stopBackingTrack,
+        audioContextRef
     } = useAudioEngine(440, (p) => broadcastPitchRef.current(p), isStudioMode, false, recordingProfile);
 
     // We use a ref to bypass react cyclic dependency issues when passing broadcastPitch downwards
@@ -336,6 +337,11 @@ export default function SatellitePage() {
                         <div className="flex items-center justify-center gap-2 mb-1">
                             <span className="px-2 py-0.5 rounded text-[10px] font-black tracking-widest bg-slate-800 text-slate-400 uppercase">Room</span>
                             <span className="text-sm font-bold text-slate-300">{roomId}</span>
+                            {audioContextRef.current?.sampleRate && (
+                                <span className="ml-1 px-2 py-0.5 rounded text-[10px] font-bold tracking-widest bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                    {Math.round(audioContextRef.current.sampleRate / 1000)}kHz
+                                </span>
+                            )}
                         </div>
                         <h1 className="text-4xl font-black text-white tracking-tight">{partName}</h1>
                     </div>
