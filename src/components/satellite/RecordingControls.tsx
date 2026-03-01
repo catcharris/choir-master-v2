@@ -59,7 +59,7 @@ export function RecordingControls({
                     onClick={onOpenScore}
                     className="w-full flex items-center justify-center gap-2 sm:gap-3 py-3 sm:py-4 bg-indigo-600/20 border border-indigo-500/50 hover:bg-indigo-600/40 text-indigo-400 font-bold rounded-2xl transition-all shadow-lg shadow-indigo-500/10 active:scale-[0.98]"
                 >
-                    <UploadCloud size={20} className="rotate-180 sm:w-6 sm:h-6" />
+                    <UploadCloud size={20} className="rotate-180 sm:w-5 sm:h-5" />
                     <span className="text-base sm:text-lg">다시 악보 전체화면 보기</span>
                 </button>
             )}
@@ -76,7 +76,7 @@ export function RecordingControls({
                     {isSoloRecording ? (
                         <>
                             <Square size={18} className="fill-white/80 sm:w-5 sm:h-5" />
-                            <span className="text-lg sm:text-xl tracking-wide">혼자 연습 중지</span>
+                            <span className="text-base sm:text-lg tracking-wide">혼자 연습 중지</span>
                         </>
                     ) : (
                         <>
@@ -93,7 +93,7 @@ export function RecordingControls({
                 className="w-full flex items-center justify-center gap-2 py-3 sm:py-4 bg-slate-800/80 backdrop-blur-xl border border-white/5 hover:bg-slate-700 disabled:opacity-30 disabled:pointer-events-none text-slate-300 font-bold rounded-2xl transition-all active:scale-[0.98]"
             >
                 <LogOut size={18} className="sm:w-5 sm:h-5" />
-                <span className="text-sm sm:text-base">연결 종료하고 나가기</span>
+                <span className="text-base sm:text-lg">연결 종료하고 나가기</span>
             </button>
         </div>
     );

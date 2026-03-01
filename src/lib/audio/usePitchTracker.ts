@@ -218,6 +218,37 @@ export function usePitchTracker(
         requestRef.current = requestAnimationFrame(updatePitch);
     }, []);
 
+    // Handle App Background / Foreground (iOS Safari Mic Revocation & Context Suspension)
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                // 1. Resume AudioContext if it was merely suspended by the browser
+                if (audioContextRef.current?.state === 'suspended') {
+                    audioContextRef.current.resume().catch(e => console.error("Failed to resume AudioContext", e));
+                }
+
+                // 2. Check if the MediaStream (Mic) track was killed by the OS
+                if (streamRef.current && modeRef.current !== 'idle') {
+                    const tracks = streamRef.current.getTracks();
+                    const isDead = tracks.some(t => t.readyState === 'ended');
+                    if (isDead) {
+                        console.log("Microphone track died while in background. Restarting...");
+                        const previousMode = modeRef.current;
+                        stopListening(); // Clean up dead tracks
+
+                        // Briefly wait for OS to release the hardware lock, then restart
+                        setTimeout(() => {
+                            startListening(previousMode as 'vocal' | 'piano').catch(console.error);
+                        }, 250);
+                    }
+                }
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, [startListening, stopListening]);
+
     // Clean up on unmount
     useEffect(() => {
         return () => {
