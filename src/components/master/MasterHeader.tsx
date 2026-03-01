@@ -77,7 +77,7 @@ export function MasterHeader({
                 </div>
 
                 <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-                    <div className={`items-center gap-2 font-bold px-3 py-1.5 rounded-lg transition-colors duration-500 hidden xl:flex shrink-0 ${isRecordingMaster ? 'bg-red-500/20 text-red-500' : 'bg-indigo-500/10 text-indigo-400'}`}>
+                    <div className={`flex items-center gap-2 font-bold px-3 py-1.5 rounded-lg transition-colors duration-500 shrink-0 ${isRecordingMaster ? 'bg-red-500/20 text-red-500' : 'bg-indigo-500/10 text-indigo-400'}`}>
                         <SignalHigh size={18} className={isRecordingMaster ? "animate-pulse" : ""} />
                         ROOM {roomId} {isRecordingMaster && "• REC"}
                         {sampleRate && (

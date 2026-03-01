@@ -37,7 +37,7 @@ export default function Home() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
               </span>
-              <span className="text-[10px] sm:text-xs font-bold tracking-widest text-slate-300 uppercase">System Online <span className="text-indigo-300 opacity-80 font-mono ml-1">v2.0.4</span></span>
+              <span className="text-[10px] sm:text-xs font-bold tracking-widest text-slate-300 uppercase">System Online <span className="text-indigo-300 opacity-80 font-mono ml-1">v2.0.5</span></span>
             </div>
 
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tighter leading-[1.1] mb-2 sm:mb-3 flex flex-wrap items-end gap-x-2">
