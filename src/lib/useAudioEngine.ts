@@ -61,7 +61,7 @@ export function useAudioEngine(
         isRecording,
         startRecording,
         stopRecording,
-        getRecordedBlob: getRecordedBlob as unknown as () => { blob: Blob | null, offsetMs: number },
+        getRecordedBlob,
         clearRecordedBlob,
 
         // Backing Track Player
