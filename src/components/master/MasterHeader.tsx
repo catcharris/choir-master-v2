@@ -51,11 +51,11 @@ export function MasterHeader({
     sampleRate
 }: MasterHeaderProps) {
     return (
-        <header className="px-4 sm:px-6 py-3 sm:py-4 flex flex-col md:flex-row md:flex-nowrap items-center justify-between gap-3 sm:gap-4 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-10 transition-colors duration-500 w-full overflow-hidden">
+        <header className="px-2 sm:px-6 py-3 sm:py-4 flex flex-col md:flex-row md:flex-nowrap items-center justify-between gap-2 sm:gap-4 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-10 transition-colors duration-500 w-full overflow-hidden">
             {/* Left Side (Tabs, Room Info, Actions) */}
-            <div className="flex items-center justify-between md:justify-start gap-2 sm:gap-4 w-full md:w-auto overflow-x-auto hide-scrollbar shrink-0 pb-1 md:pb-0">
-                <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-                    <Link href="/" className="flex items-center justify-center w-10 h-10 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-colors shrink-0">
+            <div className="flex items-center justify-between md:justify-start gap-1 sm:gap-4 w-full md:w-auto shrink-0 pb-1 md:pb-0">
+                <div className="flex items-center gap-1 sm:gap-4 shrink-0">
+                    <Link href="/" className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-colors shrink-0">
                         <Home size={18} />
                     </Link>
 
@@ -63,25 +63,25 @@ export function MasterHeader({
                     <div className="bg-slate-950 p-1 rounded-xl flex items-center shadow-inner border border-slate-800 flex-shrink-0">
                         <button
                             onClick={() => onSwitchMode('conductor')}
-                            className={`flex items-center justify-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap break-keep ${viewMode === 'conductor' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}
+                            className={`flex items-center justify-center gap-1.5 px-2 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap break-keep ${viewMode === 'conductor' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}
                         >
-                            🎼 <span className="inline-block">지휘 탭</span>
+                            🎼 <span className="hidden sm:inline-block">지휘 탭</span><span className="inline-block sm:hidden">지휘</span>
                         </button>
                         <button
                             onClick={() => onSwitchMode('manager')}
-                            className={`flex items-center justify-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap break-keep ${viewMode === 'manager' ? 'bg-slate-700 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}
+                            className={`flex items-center justify-center gap-1.5 px-2 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap break-keep ${viewMode === 'manager' ? 'bg-slate-700 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}
                         >
-                            🎛️ <span className="inline-block">테크 탭</span>
+                            🎛️ <span className="hidden sm:inline-block">테크 탭</span><span className="inline-block sm:hidden">테크</span>
                         </button>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-                    <div className={`flex items-center gap-2 font-bold px-3 py-1.5 rounded-lg transition-colors duration-500 shrink-0 ${isRecordingMaster ? 'bg-red-500/20 text-red-500' : 'bg-indigo-500/10 text-indigo-400'}`}>
-                        <SignalHigh size={18} className={isRecordingMaster ? "animate-pulse" : ""} />
-                        ROOM {roomId} {isRecordingMaster && "• REC"}
+                <div className="flex items-center gap-1 sm:gap-4 shrink-0">
+                    <div className={`flex items-center gap-1 sm:gap-2 font-bold px-2 sm:px-3 py-1.5 text-xs sm:text-base rounded-lg transition-colors duration-500 shrink-0 ${isRecordingMaster ? 'bg-red-500/20 text-red-500' : 'bg-indigo-500/10 text-indigo-400'}`}>
+                        <SignalHigh size={16} className={`sm:w-[18px] sm:h-[18px] ${isRecordingMaster ? "animate-pulse" : ""}`} />
+                        <span className="hidden sm:inline">ROOM</span> {roomId} {isRecordingMaster && "• REC"}
                         {sampleRate && (
-                            <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold tracking-widest bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                            <span className="hidden sm:inline-block ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold tracking-widest bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
                                 {Math.round(sampleRate / 1000)}kHz
                             </span>
                         )}
@@ -95,7 +95,7 @@ export function MasterHeader({
                     {viewMode === 'conductor' && (
                         <button
                             onClick={onToggleCam}
-                            className={`flex shrink-0 items-center justify-center w-10 h-10 sm:w-auto sm:px-3 sm:py-2 text-sm font-bold rounded-xl transition-colors shadow-lg shadow-black/20 ${isCamActive ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/20' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}`}
+                            className={`flex shrink-0 items-center justify-center w-9 h-9 sm:w-auto sm:px-3 sm:py-2 text-xs sm:text-sm font-bold rounded-xl transition-colors shadow-lg shadow-black/20 ${isCamActive ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/20' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}`}
                             title="지휘자 캠 송출"
                         >
                             {isCamActive ? <Video size={16} className="animate-pulse" /> : <VideoOff size={16} />}
@@ -108,7 +108,7 @@ export function MasterHeader({
                     {/* Common Disconnect Button (Moved to top row) */}
                     <button
                         onClick={onDisconnect}
-                        className="flex shrink-0 items-center justify-center w-10 h-10 sm:w-auto sm:px-4 sm:py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-sm font-bold rounded-xl transition-colors"
+                        className="flex shrink-0 items-center justify-center w-9 h-9 sm:w-auto sm:px-4 sm:py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs sm:text-sm font-bold rounded-xl transition-colors"
                         title="방 종료"
                     >
                         <LogOut size={16} />
