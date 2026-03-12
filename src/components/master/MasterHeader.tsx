@@ -77,7 +77,7 @@ export function MasterHeader({
                 </div>
 
                 <div className="flex items-center gap-1 sm:gap-4 shrink-0">
-                    <div className={`flex items-center gap-1 sm:gap-2 font-bold px-2 sm:px-3 py-1.5 text-xs sm:text-base rounded-lg transition-colors duration-500 shrink-0 ${isRecordingMaster ? 'bg-red-500/20 text-red-500' : 'bg-indigo-500/10 text-indigo-400'}`}>
+                    <div className={`flex items-center justify-center gap-1 sm:gap-2 font-bold px-2 sm:px-3 h-9 sm:h-10 text-xs sm:text-base rounded-lg transition-colors duration-500 shrink-0 ${isRecordingMaster ? 'bg-red-500/20 text-red-500' : 'bg-indigo-500/10 text-indigo-400'}`}>
                         <SignalHigh size={16} className={`sm:w-[18px] sm:h-[18px] ${isRecordingMaster ? "animate-pulse" : ""}`} />
                         <span className="hidden sm:inline">ROOM</span> {roomId} {isRecordingMaster && "• REC"}
                         {sampleRate && (
@@ -95,7 +95,7 @@ export function MasterHeader({
                     {viewMode === 'conductor' && (
                         <button
                             onClick={onToggleCam}
-                            className={`flex shrink-0 items-center justify-center w-9 h-9 sm:w-auto sm:px-3 sm:py-2 text-xs sm:text-sm font-bold rounded-xl transition-colors shadow-lg shadow-black/20 ${isCamActive ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/20' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}`}
+                            className={`flex shrink-0 items-center justify-center w-12 h-9 sm:w-auto sm:px-3 sm:h-10 text-xs sm:text-sm font-bold rounded-xl transition-colors shadow-lg shadow-black/20 ${isCamActive ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/20' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}`}
                             title="지휘자 캠 송출"
                         >
                             {isCamActive ? <Video size={16} className="animate-pulse" /> : <VideoOff size={16} />}
@@ -108,7 +108,7 @@ export function MasterHeader({
                     {/* Common Disconnect Button (Moved to top row) */}
                     <button
                         onClick={onDisconnect}
-                        className="flex shrink-0 items-center justify-center w-9 h-9 sm:w-auto sm:px-4 sm:py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs sm:text-sm font-bold rounded-xl transition-colors"
+                        className="flex shrink-0 items-center justify-center w-10 h-9 sm:w-auto sm:px-4 sm:h-10 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs sm:text-sm font-bold rounded-xl transition-colors"
                         title="방 종료"
                     >
                         <LogOut size={16} />
